@@ -33,15 +33,19 @@ def load_data (
     label_shape=(64, 64),
     data_attributes=('fill', 'edges'),
     label_attributes=('fill', 'edges', 'symmetry',
-        'circularity', 'squareness', 'triangularity')
+        'circularity', 'squareness', 'triangularity'),
+    cd=None
     ):
-    cd = (path.dirname(__file__))
+    cd = cd or (path.dirname(__file__))
     subdirs = filter(path.isdir, map(lambda d: path.join(cd, d), listdir(cd)))
     allData = []
     allLabels = []
     for subdir in subdirs:
-        dataById = readAttributeImagesFromDir(path.join(subdir, "data"), dtype=dtype)
-        labelsById = readAttributeImagesFromDir(path.join(subdir, "labels"), dtype=dtype)
+        try:
+            dataById = readAttributeImagesFromDir(path.join(cd, subdir, "data"), dtype=dtype)
+            labelsById = readAttributeImagesFromDir(path.join(cd, subdir, "labels"), dtype=dtype)
+        except:
+            print ("failed to process subdir " + subdir)
         for id in dataById.keys():
             if id not in labelsById:
                 continue

@@ -2,20 +2,23 @@ import tensorflow as tf
 from tensorflow import keras
 from model import generateModel
 #from loss import loss
-from data import small_shapes
+from data.small_shapes import load_data
 
-(allData, allLabels) = small_shapes.load_data(150)
+(allData, allLabels) = load_data(100)
 
 def loss(truth, preduction):
     return tf.reduce_sum(tf.math.squared_difference(truth, preduction))
 
 model = generateModel((64, 64, 1),
-                      output_filters = 6)
+                      output_filters=6,
+                      logic_filters=20,
+                      kernel_size=7,
+                      rec_depth=16)
 model.summary()
 model.compile(optimizer=tf.train.RMSPropOptimizer(0.001),
               loss=loss,
               metrics=['accuracy'])
 
-model.fit(allData, allLabels, epochs=50, steps_per_epoch=20)
+model.fit(allData, allLabels, epochs=200, steps_per_epoch=3)
 
-model.save_weights('./saved_models/garnet-r1')
+model.save_weights('./saved_models/garnet-r3')
