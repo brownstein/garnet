@@ -6,8 +6,8 @@ from data.small_shapes import load_data
 
 (allData, allLabels) = load_data(100)
 
-def loss(truth, preduction):
-    return tf.reduce_sum(tf.math.squared_difference(truth, preduction))
+def loss(truth, prediction):
+    return tf.reduce_sum(tf.math.squared_difference(truth, prediction))
 
 model = generateModel((64, 64, 1),
                       output_filters=6,
