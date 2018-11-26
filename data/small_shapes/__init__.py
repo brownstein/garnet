@@ -27,6 +27,7 @@ def readAttributeImagesFromDir (dir, dtype=tf.uint8):
     return idToChannels
 
 def load_data (
+    offset=0,
     max_tests=100,
     dtype=tf.uint8,
     input_shape=(64, 64),
@@ -79,8 +80,8 @@ def load_data (
                 allData = allData + [tf.image.resize_images(d, input_shape)]
                 allLabels = allLabels + [labelStack]
 
-    allData = allData[0:max_tests]
-    allLabels = allLabels[0:max_tests]
+    allData = allData[(offset):(offset+max_tests)]
+    allLabels = allLabels[(offset):(offset+max_tests)]
 
     return (
         tf.stack(allData, 0),

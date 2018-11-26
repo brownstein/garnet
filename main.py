@@ -4,7 +4,7 @@ from model import generateModel
 #from loss import loss
 from data.small_shapes import load_data
 
-(allData, allLabels) = load_data(100)
+(allData, allLabels) = load_data(max_tests=50, offset=100)
 
 def loss(truth, preduction):
     return tf.reduce_sum(tf.math.squared_difference(truth, preduction))
