@@ -28,14 +28,18 @@ def LinkedConv2DStack (rec_depth=4, kernel_size=5, logic_filters=32,
         # trained at variable depths, you can force partial recursive
         # invariance, which should do a good job of ensuring the filters
         # become specialized
-        repeatedLayer = keras.layers.SeparableConv2D(filters=logic_filters,
-            kernel_size=kernel_size, padding=padding, data_format=data_format,
-            activation=activation)
+        #
+        # repeatedLayer = keras.layers.SeparableConv2D(filters=logic_filters,
+        #     kernel_size=kernel_size, padding=padding, data_format=data_format,
+        #     activation=activation)
 
         for r in range(0, rec_depth):
+            chain = keras.layers.SeparableConv2D(filters=logic_filters,
+                kernel_size=kernel_size, padding=padding, data_format=data_format,
+                activation=activation)(chain)
             chain = keras.layers.Concatenate(concatAxis)([
                 inputLayer,
-                repeatedLayer(chain)
+                chain
                 ])
 
         # remap output into specced number and position of channels

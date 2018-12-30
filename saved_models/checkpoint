@@ -1,7 +1,2 @@
-model_checkpoint_path: "garnet-r3"
-all_model_checkpoint_paths: "garnet-r3"
-
-import tensorflow as tf
-from tensorflow import keras
-m = keras.models.load_model('./keras_saved/test')
-tf.keras.utils.plot_model(m, to_file='test.png')
+model_checkpoint_path: "garnet-r2"
+all_model_checkpoint_paths: "garnet-r2"

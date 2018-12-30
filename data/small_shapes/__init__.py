@@ -26,6 +26,53 @@ def readAttributeImagesFromDir (dir, dtype=tf.uint8):
             idToChannels[testNumber][attrName] = tf.cast(imageTensor, dtype)
     return idToChannels
 
+# helper to list subdirectories in a given directory
+def get_subdirs (cd):
+    return filter(path.isdir, map(lambda d: path.join(cd, d), listdir(cd)))
+
+# helper to list files in a given directory
+def get_files(cd):
+    return filter(path.isfile, map(lambda d: path.join(cd, d), listdir(cd)))
+
+# loads data the better way
+def load_dataset (
+    dtype=tf.uint8, input_shape=(64, 64), label_shape=(64, 64),
+    data_attributes=('fill', 'edges'),
+    label_attributes=('fill', 'edges','symmetry', 'circularity',
+        'squareness', 'triangularity'),
+    cd=None
+    ):
+    idToData = {}
+    idToLabels = {}
+    for subDir in get_subdirs(cd):
+        for dataFile in get_files(path.join(subDir, "data")):
+            (fileName, ext) = path.basename(dataFile).split(".")
+            if ext != 'png':
+                continue
+            nameParts = fileName.split("-")
+            if len(nameParts) < 2:
+                continue
+            attrName = '-'.join(nameParts[0:-1])
+            testNumber = nameParts[-1]
+            if testNumber not in idToChannels:
+                idToData[testNumber] = {}
+            idToData[testNumber] = True
+
+            if ('rgb' in nameParts):
+                idToData[testNumber]
+
+            if testNumber not in idToChannels:
+                idToChannels[testNumber] = {}
+            if ('rgb' in nameParts):
+                imageTensor = tf.image.decode_png(imageString, 4)
+                idToChannels[testNumber][attrName] = tf.cast(imageTensor, dtype)
+            else:
+                imageTensor = tf.image.decode_png(imageString, 1)
+                idToChannels[testNumber][attrName] = tf.cast(imageTensor, dtype)
+
+    return null
+
+# loads data the old way
 def load_data (
     offset=0,
     max_tests=100,
