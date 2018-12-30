@@ -72,8 +72,8 @@ def load_dataset (
 
     return null
 
-# loads data the old way
-def load_data (
+# next main entry point
+def load_data_as_dataset(
     offset=0,
     max_tests=100,
     dtype=tf.uint8,
@@ -82,55 +82,91 @@ def load_data (
     data_attributes=('fill', 'edges'),
     label_attributes=('fill', 'edges', 'symmetry',
         'circularity', 'squareness', 'triangularity'),
-    cd=None
+    cd=None,
+    return_combined_generator=True
     ):
     cd = cd or (path.dirname(__file__))
     subdirs = filter(path.isdir, map(lambda d: path.join(cd, d), listdir(cd)))
     allData = []
     allLabels = []
-    for subdir in subdirs:
-        try:
-            dataById = readAttributeImagesFromDir(path.join(cd, subdir, "data"), dtype=dtype)
-            labelsById = readAttributeImagesFromDir(path.join(cd, subdir, "labels"), dtype=dtype)
-        except:
-            print ("failed to process subdir " + subdir)
-        for id in dataById.keys():
-            if id not in labelsById:
-                continue
-            dataByAttr = dataById[id]
-            labelsByAttr = labelsById[id]
 
-            dataStack = []
-            for attr in data_attributes:
-                if attr in dataByAttr:
-                    nextLayer = dataByAttr[attr]
-                    dataStack = dataStack + [nextLayer]
-                else:
-                    dataStack = dataStack + [
-                        tf.zeros(shape=(input_shape[0], input_shape[1], 1))
-                        ]
+    def combined_generator():
+        for subdir in subdirs:
+            try:
+                dataById = readAttributeImagesFromDir(path.join(cd, subdir, "data"), dtype=dtype)
+                labelsById = readAttributeImagesFromDir(path.join(cd, subdir, "labels"), dtype=dtype)
+            except:
+                print ("failed to process subdir " + subdir)
+            for id in dataById.keys():
+                if id not in labelsById:
+                    continue
+                dataByAttr = dataById[id]
+                labelsByAttr = labelsById[id]
 
-            labelStack = []
-            for attr in label_attributes:
-                if attr in labelsByAttr:
-                    nextLayer = labelsByAttr[attr]
-                    labelStack = labelStack + [tf.to_float(nextLayer)]
-                else:
-                    labelStack = labelStack + [
-                        tf.zeros(shape=(input_shape[0], input_shape[1], 1))
-                        ]
+                dataStack = []
+                for attr in data_attributes:
+                    if attr in dataByAttr:
+                        nextLayer = dataByAttr[attr]
+                        dataStack = dataStack + [nextLayer]
+                    else:
+                        dataStack = dataStack + [
+                            tf.zeros(shape=(input_shape[0], input_shape[1], 1))
+                            ]
 
-            labelStack = list(tf.image.resize_images(l, label_shape) for l in labelStack)
-            labelStack = tf.concat(labelStack, len(labelStack[0].shape) - 1)
+                labelStack = []
+                for attr in label_attributes:
+                    if attr in labelsByAttr:
+                        nextLayer = labelsByAttr[attr]
+                        labelStack = labelStack + [tf.to_float(nextLayer)]
+                    else:
+                        labelStack = labelStack + [
+                            tf.zeros(shape=(input_shape[0], input_shape[1], 1))
+                            ]
 
-            for d in dataStack:
-                allData = allData + [tf.image.resize_images(d, input_shape)]
-                allLabels = allLabels + [labelStack]
+                labelStack = list(tf.image.resize_images(l, label_shape) for l in labelStack)
+                labelStack = tf.concat(labelStack, len(labelStack[0].shape) - 1)
+                dataStack = list(tf.image.resize_images(d, input_shape) for d in dataStack)
+                dataStack = tf.concat(dataStack, len(dataStack[0].shape) - 1)
 
-    allData = allData[(offset):(offset+max_tests)]
-    allLabels = allLabels[(offset):(offset+max_tests)]
+                yield (dataStack, labelStack)
+
+    if (return_combined_generator):
+        return tf.data.Dataset().batch(5).from_generator(combined_generator,
+                                                         output_types=dtype,
+                                                         output_shapes=input_shape
+                                                         ) # this looks like shit
+                                                           # but it isn't intentional
+                                                           # python formatting rules
+
+    g = combined_generator()
+    data_queue = []
+    label_queue = []
+
+    def data_generator():
+        for (data, label) in g:
+            label_queue = label_queue + [label]
+            yield data
+            for queue_data in data_queue:
+                yield queue_data
+            data_queue = []
+
+    def label_generator():
+        for (data, label) in g:
+            data_queue = data_queue + [data]
+            yield label
+            for queue_label in label_queue:
+                yield queue_label
+            label_queue = []
 
     return (
-        tf.stack(allData, 0),
-        tf.stack(allLabels, 0)
-        )
+        tf.data
+            .Dataset()
+            .batch(5)
+            .from_generator(data_generator, output_types=dtype,
+                            output_shapes=input_shape),
+        tf.data
+            .Dataset()
+            .batch(5)
+            .from_generator(label_generator, output_types=dtype,
+                            output_shapes=input_shape)
+                            )
