@@ -76,7 +76,7 @@ def load_dataset (
 def load_data_as_dataset(
     offset=0,
     max_tests=100,
-    dtype=tf.uint8,
+    dtype=tf.int32,
     input_shape=(64, 64),
     label_shape=(64, 64),
     data_attributes=('fill', 'edges'),
@@ -123,20 +123,38 @@ def load_data_as_dataset(
                             tf.zeros(shape=(input_shape[0], input_shape[1], 1))
                             ]
 
-                labelStack = list(tf.image.resize_images(l, label_shape) for l in labelStack)
-                labelStack = tf.concat(labelStack, len(labelStack[0].shape) - 1)
                 dataStack = list(tf.image.resize_images(d, input_shape) for d in dataStack)
                 dataStack = tf.concat(dataStack, len(dataStack[0].shape) - 1)
 
+                labelStack = list(tf.image.resize_images(l, label_shape) for l in labelStack)
+                labelStack = tf.concat(labelStack, len(labelStack[0].shape) - 1)
+
+                dataStack = tf.to_int32(dataStack)
+                labelStack = tf.to_int32(labelStack)
+
+                # dataStack = tf.expand_dims(dataStack, 0)
+                # labelStack = tf.expand_dims(labelStack, 0)
+                # dataStack = tf.expand_dims(dataStack, -1)
+                # labelStack = tf.expand_dims(labelStack, -1)
+
                 yield (dataStack, labelStack)
 
+    firstGenResult = [g for _, g in zip(range(1), combined_generator())]
+    firstData = firstGenResult[0][0]
+    firstLabel = firstGenResult[0][1]
+
     if (return_combined_generator):
-        return tf.data.Dataset().batch(5).from_generator(combined_generator,
-                                                         output_types=dtype,
-                                                         output_shapes=input_shape
-                                                         ) # this looks like shit
-                                                           # but it isn't intentional
-                                                           # python formatting rules
+        return tf.data.Dataset().batch(5).from_generator(
+            combined_generator,
+            output_types=(
+                firstData.dtype,
+                firstLabel.dtype
+            ),
+            output_shapes=(
+                tf.TensorShape([None, input_shape[0], input_shape[1], 1]),
+                tf.TensorShape([None, label_shape[0], label_shape[1], 4])
+                )
+            )
 
     g = combined_generator()
     data_queue = []
