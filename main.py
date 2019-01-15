@@ -1,14 +1,15 @@
 import tensorflow as tf
 from tensorflow import keras
-from model import generateModel
-#from loss import loss
-from data.small_shapes import load_data_as_dataset
+from model import generateModel, linkWeights
+from data.small_combinations import load_data_as_dataset
+from run_output import run_output_summaries
 
-allDataAndLabels = load_data_as_dataset(max_tests=25, offset=100)
+allDataAndLabels = load_data_as_dataset()
 
 def loss(truth, prediction):
-    sum = tf.reduce_sum(tf.math.squared_difference(truth, prediction))
-    return sum
+    return tf.reduce_sum(
+        tf.math.squared_difference(truth, prediction)
+        )
 
 model = generateModel((64, 64, 2),
                       output_filters=6,
@@ -16,20 +17,28 @@ model = generateModel((64, 64, 2),
                       kernel_size=7,
                       rec_depth=10)
 
-model.load_weights("./saved_models/garnet-r4")
+linkWeights(model)
 
-model.summary()
-model.compile(optimizer=tf.train.RMSPropOptimizer(0.001),
-              loss=loss,
-              metrics=['accuracy'])
+with tf.Session().as_default() as sess:
+    # model.load_weights("./saved_models/garnet-r4")
+
+    model.summary()
+    model.compile(optimizer=tf.train.AdamOptimizer(
+                    learning_rate=0.1,
+                    epsilon=0.1
+                  ),
+                  loss=loss,
+                  metrics=['accuracy'])
 
 
-tensorboard = keras.callbacks.TensorBoard(log_dir="./graph",
-                          histogram_freq=0,
-                          write_graph=True,
-                          write_images=True)
+    tensorboard = keras.callbacks.TensorBoard(log_dir="./graph",
+                              histogram_freq=0,
+                              write_graph=True,
+                              write_images=True)
 
-model.fit(allDataAndLabels, epochs=500, steps_per_epoch=30, callbacks=[tensorboard])
+    model.fit(allDataAndLabels, epochs=100, steps_per_epoch=25, callbacks=[tensorboard])
 
-model.save_weights('./saved_models/garnet-r4')
-model.save("garnet.h5")
+    model.save_weights('./saved_models/garnet-r5')
+    model.save("garnet.h5")
+
+    run_output_summaries(sess, model, allDataAndLabels)

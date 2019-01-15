@@ -34,9 +34,14 @@ def LinkedConv2DStack (rec_depth=4, kernel_size=5, logic_filters=32,
         #     activation=activation)
 
         for r in range(0, rec_depth):
-            chain = keras.layers.SeparableConv2D(filters=logic_filters,
-                kernel_size=kernel_size, padding=padding, data_format=data_format,
-                activation=activation)(chain)
+            chain = keras.layers.SeparableConv2D(
+                filters=logic_filters,
+                kernel_size=kernel_size,
+                padding=padding,
+                data_format=data_format,
+                activation=activation,
+                name="repeatedConv2D_{0}".format(r)
+                )(chain)
             chain = keras.layers.Concatenate(concatAxis)([
                 inputLayer,
                 chain
@@ -60,3 +65,18 @@ def generateModel (input_shape=(64, 64, 1), noise_level=0.05, **kwargs):
     outputLayer = chain
 
     return keras.Model(inputs=inputLayer, outputs=outputLayer)
+
+def linkWeights (model):
+    firstLayer = None
+    for layer in model.layers:
+        if 'repeatedConv2D_' not in layer.name:
+            continue
+        if not firstLayer:
+            firstLayer = layer
+            continue
+        layer.bias = firstLayer.bias
+        layer._trainable_weights = []
+        layer._trainable_weights.append(firstLayer.bias)
+        for w in range(len(layer.weights)):
+            layer.weights[w] = firstLayer.weights[w]
+            layer._trainable_weights.append(firstLayer.weights[w])

@@ -87,9 +87,6 @@ def load_data_as_dataset(
     cd = cd or (path.dirname(__file__))
     subdirs = filter(path.isdir, map(lambda d: path.join(cd, d), listdir(cd)))
 
-    allData = []
-    allLabels = []
-
     def combined_generator():
         for subdir in subdirs:
             try:
