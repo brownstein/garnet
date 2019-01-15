@@ -14,9 +14,9 @@ model = generateModel((64, 64, 2),
                       output_filters=6,
                       logic_filters=20,
                       kernel_size=7,
-                      rec_depth=4)
+                      rec_depth=10)
 
-model.load_weights("./saved_models/garnet-r2")
+model.load_weights("./saved_models/garnet-r4")
 
 model.summary()
 model.compile(optimizer=tf.train.RMSPropOptimizer(0.001),
@@ -29,6 +29,7 @@ tensorboard = keras.callbacks.TensorBoard(log_dir="./graph",
                           write_graph=True,
                           write_images=True)
 
-model.fit(allDataAndLabels, epochs=30, steps_per_epoch=10, callbacks=[tensorboard])
+model.fit(allDataAndLabels, epochs=500, steps_per_epoch=30, callbacks=[tensorboard])
 
-model.save_weights('./saved_models/garnet-r2')
+model.save_weights('./saved_models/garnet-r4')
+model.save("garnet.h5")
