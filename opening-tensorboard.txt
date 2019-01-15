@@ -1,3 +1,3 @@
 Opening Tensorboard:
 tensorboard --logdir=logs
-http://Roberts-MacBook-Pro-2.local:6006
+localhost:6006

@@ -82,11 +82,11 @@ def load_data_as_dataset(
     data_attributes=('fill', 'edges'),
     label_attributes=('fill', 'edges', 'symmetry',
         'circularity', 'squareness', 'triangularity'),
-    cd=None,
-    return_combined_generator=True
+    cd=None
     ):
     cd = cd or (path.dirname(__file__))
     subdirs = filter(path.isdir, map(lambda d: path.join(cd, d), listdir(cd)))
+
     allData = []
     allLabels = []
 
@@ -132,59 +132,11 @@ def load_data_as_dataset(
                 dataStack = tf.to_int32(dataStack)
                 labelStack = tf.to_int32(labelStack)
 
-                # dataStack = tf.expand_dims(dataStack, 0)
-                # labelStack = tf.expand_dims(labelStack, 0)
-                # dataStack = tf.expand_dims(dataStack, -1)
-                # labelStack = tf.expand_dims(labelStack, -1)
-
                 yield (dataStack, labelStack)
 
-    firstGenResult = [g for _, g in zip(range(1), combined_generator())]
-    firstData = firstGenResult[0][0]
-    firstLabel = firstGenResult[0][1]
+    tensorPairs = [pair for pair in combined_generator()]
+    tensorData = [d for (d, _) in tensorPairs]
+    tensorLabels = [l for (_, l) in tensorPairs]
 
-    if (return_combined_generator):
-        return tf.data.Dataset().batch(5).from_generator(
-            combined_generator,
-            output_types=(
-                firstData.dtype,
-                firstLabel.dtype
-            ),
-            output_shapes=(
-                tf.TensorShape([None, input_shape[0], input_shape[1], 1]),
-                tf.TensorShape([None, label_shape[0], label_shape[1], 4])
-                )
-            )
-
-    g = combined_generator()
-    data_queue = []
-    label_queue = []
-
-    def data_generator():
-        for (data, label) in g:
-            label_queue = label_queue + [label]
-            yield data
-            for queue_data in data_queue:
-                yield queue_data
-            data_queue = []
-
-    def label_generator():
-        for (data, label) in g:
-            data_queue = data_queue + [data]
-            yield label
-            for queue_label in label_queue:
-                yield queue_label
-            label_queue = []
-
-    return (
-        tf.data
-            .Dataset()
-            .batch(5)
-            .from_generator(data_generator, output_types=dtype,
-                            output_shapes=input_shape),
-        tf.data
-            .Dataset()
-            .batch(5)
-            .from_generator(label_generator, output_types=dtype,
-                            output_shapes=input_shape)
-                            )
+    dSet = tf.data.Dataset.from_tensor_slices((tensorData, tensorLabels))
+    return dSet.shuffle(20).repeat().batch(10)
