@@ -1,13 +1,22 @@
 import tensorflow as tf
 import os
 
-def run_output_summaries(sess, model, dataSet):
+def run_output_summaries(sess, model, dataSet, outputRatio):
     iterator = dataSet.make_one_shot_iterator()
     step = 0
+    skipCountdown = 0
     nextCaseAndLabel = iterator.get_next()
     while (nextCaseAndLabel):
         step += 1
         nextCase = nextCaseAndLabel[0]
+        nextCaseAndLabel = iterator.get_next()
+
+        if (skipCountdown > 0):
+            skipCountdown -= outputRatio
+            continue
+
+        skipCountdown = 1
+
         p = model.predict(nextCase, steps=1)
         channels = (
             'fill',
@@ -28,4 +37,3 @@ def run_output_summaries(sess, model, dataSet):
             f = open("output/{0}".format(summaryName), "wb")
             f.write(png)
             f.close()
-            nextCaseAndLabel = iterator.get_next()

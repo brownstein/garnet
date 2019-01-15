@@ -23,6 +23,8 @@ def LinkedConv2DStack (rec_depth=4, kernel_size=5, logic_filters=32,
                 )
             ])
 
+        initialLogitChain = chain
+
         # this is where the good stuff happens - concept diffusion and
         # intersection processing by way of filter mixing.
         # trained at variable depths, you can force partial recursive
@@ -43,7 +45,7 @@ def LinkedConv2DStack (rec_depth=4, kernel_size=5, logic_filters=32,
                 name="repeatedConv2D_{0}".format(r)
                 )(chain)
             chain = keras.layers.Concatenate(concatAxis)([
-                inputLayer,
+                initialLogitChain,
                 chain
                 ])
 
