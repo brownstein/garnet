@@ -13,7 +13,8 @@ def loss(truth, prediction):
 
 model = generateModel((64, 64, 2),
                       output_filters=6,
-                      logic_filters=20,
+                      initial_filters=8,
+                      logic_filters=32,
                       kernel_size=7,
                       rec_depth=8)
 

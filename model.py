@@ -3,15 +3,19 @@ from tensorflow import keras
 
 # Linked layer stack helper - this is how you build RCNNs cheaply!
 def LinkedConv2DStack (rec_depth=4, kernel_size=5, logic_filters=32,
-    output_filters=8, activation='selu', padding='same',
+    initial_filters=16, output_filters=8, activation='selu', padding='same',
     data_format='channels_last'):
     def apply (inputLayer, inputLogits=None):
 
         # this maps logit suggestions to initial logic weights, or the input
         # layer if no logit suggestion layer is specified
-        initialLogitLayer = keras.layers.Conv2D(filters=logic_filters,
-            kernel_size=kernel_size, padding=padding, data_format=data_format,
-            activation=activation)
+        initialLogitLayer = keras.layers.Conv2D(
+            filters=initial_filters,
+            kernel_size=kernel_size,
+            padding=padding,
+            data_format=data_format,
+            activation=activation
+            )
 
         concatAxis = 3 if data_format == 'channels_last' else 1
         chain = keras.layers.Concatenate(concatAxis)([
