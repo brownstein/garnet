@@ -9,10 +9,10 @@ allDataAndLabels = load_data_as_dataset(dtype=tf.float16)
 
 model = generateModel((64, 64, 2),
                       output_filters=6,
-                      initial_filters=6,
-                      logic_filters=20,
+                      initial_filters=8,
+                      logic_filters=32,
                       kernel_size=9,
-                      rec_depth=32)
+                      rec_depth=50)
 
 linkWeights(model)
 
@@ -25,7 +25,7 @@ with tf.Session().as_default() as sess:
     # oldModel.load_weights("garnet2.h5")
     # copyWeights(oldModel, model)
 
-    # model.load_weights("./saved_models/garnet-r7")
+    # model.load_weights("./saved_models/garnet-r8")
 
     model.summary()
     model.compile(optimizer='adam',
@@ -37,9 +37,9 @@ with tf.Session().as_default() as sess:
                               write_graph=True,
                               write_images=True)
 
-    model.fit(allDataAndLabels, epochs=500, steps_per_epoch=25, callbacks=[tensorboard])
+    model.fit(allDataAndLabels, epochs=5000, steps_per_epoch=25, callbacks=[tensorboard])
 
-    model.save_weights('./saved_models/garnet-r8')
-    model.save("garnet_r8.h5")
+    model.save_weights('./saved_models/garnet-r9')
+    model.save("garnet_r9.h5")
 
-    run_output_summaries(sess, model, allDataAndLabels, 0.1)
+    run_output_summaries(sess, model, allDataAndLabels, 0.1, 100)

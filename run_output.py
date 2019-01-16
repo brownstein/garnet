@@ -1,7 +1,7 @@
 import tensorflow as tf
 import os
 
-def run_output_summaries(sess, model, dataSet, outputRatio):
+def run_output_summaries(sess, model, dataSet, outputRatio, max=100):
     iterator = dataSet.make_one_shot_iterator()
     step = 0
     skipCountdown = 0
@@ -37,3 +37,6 @@ def run_output_summaries(sess, model, dataSet, outputRatio):
             f = open("output/{0}".format(summaryName), "wb")
             f.write(png)
             f.close()
+
+            if (c >= max):
+                break
