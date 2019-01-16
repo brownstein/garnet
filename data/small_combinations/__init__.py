@@ -30,7 +30,7 @@ def load_data_as_dataset(
     dtype=tf.uint8,
     input_shape=(64, 64),
     label_shape=(64, 64),
-    data_attributes=('fill', 'edges'),
+    data_attributes=('edges', 'edges'),
     label_attributes=('fill', 'edges', 'symmetry',
         'circularity', 'squareness', 'triangularity'),
     cd=None
@@ -85,4 +85,4 @@ def load_data_as_dataset(
     tensorLabels = [l for (_, l) in tensorPairs]
 
     dSet = tf.data.Dataset.from_tensor_slices((tensorData, tensorLabels))
-    return dSet.shuffle(50).repeat().batch(25)
+    return dSet.batch(25).repeat()

@@ -1,2 +1,2 @@
-model_checkpoint_path: "garnet-r5"
-all_model_checkpoint_paths: "garnet-r5"
+model_checkpoint_path: "garnet-r8"
+all_model_checkpoint_paths: "garnet-r8"

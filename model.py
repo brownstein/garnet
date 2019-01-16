@@ -63,7 +63,7 @@ def LinkedConv2DStack (rec_depth=4, kernel_size=5, logic_filters=32,
     return apply
 
 # Generates a training-ready model
-def generateModel (input_shape=(64, 64, 1), noise_level=0.05, **kwargs):
+def generateModel (input_shape=(64, 64, 1), noise_level=0.1, **kwargs):
 
     inputLayer = keras.layers.Input(input_shape)
     chain = keras.layers.GaussianNoise(noise_level)(inputLayer)
@@ -86,3 +86,17 @@ def linkWeights (model):
         for w in range(len(layer.weights)):
             layer.weights[w] = firstLayer.weights[w]
             layer._trainable_weights.append(firstLayer.weights[w])
+
+
+def copyWeights (fromModel, toModel):
+    fromByName = {}
+    for layer in fromModel.layers:
+        fromByName[layer.name] = layer
+    for layer in toModel.layers:
+        fromLayer = fromByName[layer.name]
+        if not fromLayer:
+            continue
+        for i in range(len(layer.weights)):
+            w = layer.weights[i]
+            fromW = fromLayer.weights[i]
+            w.assign(fromW)
