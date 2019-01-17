@@ -1,7 +1,10 @@
 import tensorflow as tf
 import os
 
-def run_output_summaries(sess, model, dataSet, outputRatio, max=100):
+def dump_keras_weights(model):
+    model.save_weights("./keras_saved")
+
+def dump_images(sess, model, dataSet, outputRatio, max=100):
     iterator = dataSet.make_one_shot_iterator()
     step = 0
     skipCountdown = 0

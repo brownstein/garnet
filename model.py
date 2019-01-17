@@ -4,7 +4,7 @@ from tensorflow import keras
 # Linked layer stack helper - this is how you build RCNNs cheaply!
 def LinkedConv2DStack (rec_depth=4, kernel_size=5, logic_filters=32,
     initial_filters=16, output_filters=8, activation='selu', padding='same',
-    data_format='channels_last'):
+    data_format='channels_last', prefix=''):
     def apply (inputLayer, inputLogits=None):
 
         # this maps logit suggestions to initial logic weights, or the input
@@ -14,7 +14,8 @@ def LinkedConv2DStack (rec_depth=4, kernel_size=5, logic_filters=32,
             kernel_size=kernel_size,
             padding=padding,
             data_format=data_format,
-            activation=activation
+            activation=activation,
+            name="{0}conv2d".format(prefix)
             )
 
         concatAxis = 3 if data_format == 'channels_last' else 1
@@ -46,7 +47,7 @@ def LinkedConv2DStack (rec_depth=4, kernel_size=5, logic_filters=32,
                 padding=padding,
                 data_format=data_format,
                 activation=activation,
-                name="repeatedConv2D_{0}".format(r)
+                name="{0}repeatedConv2D_{0}".format(prefix, r)
                 )(chain)
             chain = keras.layers.Concatenate(concatAxis)([
                 initialLogitChain,
@@ -63,19 +64,28 @@ def LinkedConv2DStack (rec_depth=4, kernel_size=5, logic_filters=32,
     return apply
 
 # Generates a training-ready model
-def generateModel (input_shape=(64, 64, 1), noise_level=0.1, **kwargs):
+def generateModel (input_shape=(64, 64, 1), noise_level=0.1, prefix='',
+                  **kwargs):
 
     inputLayer = keras.layers.Input(input_shape)
-    chain = keras.layers.GaussianNoise(noise_level)(inputLayer)
-    chain = LinkedConv2DStack(**kwargs)(chain)
+    chain = keras.layers.GaussianNoise(
+        noise_level,
+        name="{0}gaussianNoise".format(prefix)
+        )(inputLayer)
+    chain = LinkedConv2DStack(prefix=prefix, **kwargs)(chain)
     outputLayer = chain
 
     return keras.Model(inputs=inputLayer, outputs=outputLayer)
 
-def linkWeights (model):
+# links weights between conv layers
+def linkWeights (model, offset=0):
     firstLayer = None
+    layerNo = 0
     for layer in model.layers:
         if 'repeatedConv2D_' not in layer.name:
+            continue
+        layerNo += 1
+        if layerNo <= offset:
             continue
         if not firstLayer:
             firstLayer = layer
@@ -87,13 +97,13 @@ def linkWeights (model):
             layer.weights[w] = firstLayer.weights[w]
             layer._trainable_weights.append(firstLayer.weights[w])
 
-
-def copyWeights (fromModel, toModel):
+# copies weights from one model to another
+def copyWeights (fromModel, toModel, fromPrefix='', toPrefix=''):
     fromByName = {}
     for layer in fromModel.layers:
         fromByName[layer.name] = layer
     for layer in toModel.layers:
-        fromLayer = fromByName[layer.name]
+        fromLayer = fromByName[layer.name.replace(toPrefix, fromPrefix, 1)]
         if not fromLayer:
             continue
         for i in range(len(layer.weights)):
