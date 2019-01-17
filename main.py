@@ -37,7 +37,7 @@ with tf.Session().as_default() as sess:
                   metrics=['accuracy'])
 
     tensorboard = keras.callbacks.TensorBoard(log_dir="./graph",
-                                              histogram_freq=10,
+                                              histogram_freq=0,
                                               write_graph=True,
                                               write_images=True,
                                               write_grads=True

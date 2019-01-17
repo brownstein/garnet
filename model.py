@@ -47,7 +47,7 @@ def LinkedConv2DStack (rec_depth=4, kernel_size=5, logic_filters=32,
                 padding=padding,
                 data_format=data_format,
                 activation=activation,
-                name="{0}repeatedConv2D_{0}".format(prefix, r)
+                name="{0}repeatedConv2D_{1}".format(prefix, r)
                 )(chain)
             chain = keras.layers.Concatenate(concatAxis)([
                 initialLogitChain,
