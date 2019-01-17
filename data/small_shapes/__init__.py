@@ -126,8 +126,9 @@ def load_data_as_dataset(
                 labelStack = list(tf.image.resize_images(l, label_shape) for l in labelStack)
                 labelStack = tf.concat(labelStack, len(labelStack[0].shape) - 1)
 
-                dataStack = tf.to_int32(dataStack)
-                labelStack = tf.to_int32(labelStack)
+                if (dtype not in [tf.float16, tf.float32]):
+                    dataStack = tf.to_int32(dataStack)
+                    labelStack = tf.to_int32(labelStack)
 
                 yield (dataStack, labelStack)
 
@@ -136,4 +137,4 @@ def load_data_as_dataset(
     tensorLabels = [l for (_, l) in tensorPairs]
 
     dSet = tf.data.Dataset.from_tensor_slices((tensorData, tensorLabels))
-    return dSet.shuffle(20).repeat().batch(10)
+    return dSet.shuffle(50).repeat().batch(25)

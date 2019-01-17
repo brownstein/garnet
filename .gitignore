@@ -6,4 +6,4 @@ include
 *.pyc
 venv
 graph/*
-output/*
+output*/*

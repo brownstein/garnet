@@ -28,9 +28,9 @@ def readAttributeImagesFromDir (dir, dtype=tf.uint8):
 def load_data_as_dataset(
     max_tests=100,
     dtype=tf.uint8,
-    input_shape=(64, 64),
-    label_shape=(64, 64),
-    data_attributes=('edges', 'edges'),
+    input_shape=(40, 40),
+    label_shape=(40, 40),
+    data_attributes=('fill', 'fill'),
     label_attributes=('fill', 'edges', 'symmetry',
         'circularity', 'squareness', 'triangularity'),
     cd=None
