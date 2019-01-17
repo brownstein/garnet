@@ -21,10 +21,11 @@ def enumerateDirectoryAsNestedDict(dir):
     return testNumberToAttributes
 
 # gets a sequence of valid test numbers and dicts to index into them
-def enumerateValidTestCases(dir, data_channels, label_channels):
+def enumerateValidTestCases(dir, data_channels, label_channels, require_labels=False):
     dataDict = enumerateDirectoryAsNestedDict(path.join(dir, "data"))
     labelsDict = enumerateDirectoryAsNestedDict(path.join(dir, "labels"))
     testNumbers = []
+
     for testNo in dataDict.keys():
         if testNo not in labelsDict:
             continue
@@ -33,7 +34,7 @@ def enumerateValidTestCases(dir, data_channels, label_channels):
             if channel not in dataDict[testNo]:
                 allValid = False
         for channel in label_channels:
-            if channel not in labelsDict[testNo]:
+            if require_labels and channel not in labelsDict[testNo]:
                 allValid = False
         if allValid:
             testNumbers.append(testNo)
@@ -54,11 +55,14 @@ def createImageDataSetForDirectory(dir,
                                    data_shape=(32, 32),
                                    label_shape=(32, 32)
                                    ):
+
     (caseNumbers, dataDict, labelsDict) = enumerateValidTestCases(
         dir,
         data_channels,
         label_channels
         )
+
+    fallback = path.join(dir, 'fallback.png')
 
     caseArrays = []
     for n in caseNumbers:
@@ -66,8 +70,13 @@ def createImageDataSetForDirectory(dir,
         for channel in data_channels:
             caseArray.append(dataDict[n][channel])
         for channel in label_channels:
-            caseArray.append(labelsDict[n][channel])
+            if channel in labelsDict[n]:
+                caseArray.append(labelsDict[n][channel])
+            else:
+                caseArray.append(fallback)
         caseArrays.append(caseArray)
+
+    print(caseArrays)
 
     def getTensors(file_list):
         dataLayers = []
@@ -78,7 +87,6 @@ def createImageDataSetForDirectory(dir,
             imageTensor = tf.cast(imageTensor, dtype)
             imageTensor = tf.image.resize_images(imageTensor, data_shape)
             dataLayers.append(imageTensor)
-
         for channelNo in range(len(data_channels), len(data_channels) + len(label_channels)):
             imageString = tf.read_file(file_list[channelNo])
             imageTensor = tf.image.decode_png(imageString, 1)
@@ -88,12 +96,18 @@ def createImageDataSetForDirectory(dir,
 
         dataStack = tf.concat(dataLayers, len(dataLayers[0].shape) - 1)
         labelStack = tf.concat(labelLayers, len(labelLayers[0].shape) - 1)
-        dataStack = tf.expand_dims(dataStack, 0)
-        labelStack = tf.expand_dims(labelStack, 0)
+
+        dataStack = tf.expand_dims(dataStack, axis=0)
+        labalStack = tf.expand_dims(labelStack, axis=0)
 
         return (dataStack, labelStack)
 
-    return tf.data.Dataset.from_tensor_slices(caseArrays).map(getTensors)
+    dset = tf.data.Dataset.from_tensor_slices(caseArrays).map(getTensors)
+    # dset.output_classes = tf.Tensor
+    # dset.output_types = dtype
+    # dset.output_shapes = ([None, 32, 32, 2], [None, 32, 32, 6])
+
+    return dset
 
 # loads the dataset
 def load_dataset(dtype=tf.float16,
@@ -101,4 +115,8 @@ def load_dataset(dtype=tf.float16,
                  label_shape=(32, 32)
                  ):
     cd = path.dirname(__file__)
-    return createImageDataSetForDirectory(path.join(cd, 'triangles'))
+    return createImageDataSetForDirectory(
+        path.join(cd, 'circles'),
+        data_shape=input_shape,
+        label_shape=label_shape
+    )
