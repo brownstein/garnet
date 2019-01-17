@@ -79,7 +79,7 @@ def createImageDataSetForDirectory(dir,
     def getTensors(file_list):
         dataLayers = []
         labelLayers = []
-        
+
         for channelNo in range(len(data_channels)):
             imageString = tf.read_file(file_list[channelNo])
             imageTensor = tf.image.decode_png(imageString, 1)
@@ -127,4 +127,4 @@ def load_dataset(dtype=tf.float16,
         )
 
     combined = circles.concatenate(quads).concatenate(triangles)
-    return combined.shuffle(50).repeat().batch(25)
+    return combined.shuffle(200).repeat().batch(25)

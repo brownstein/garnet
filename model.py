@@ -91,11 +91,28 @@ def linkWeights (model, offset=0):
             firstLayer = layer
             continue
         layer.bias = firstLayer.bias
+        layer.__trainable_weights = layer._trainable_weights
+        layer.__weights = layer.weights
         layer._trainable_weights = []
         layer._trainable_weights.append(firstLayer.bias)
         for w in range(len(layer.weights)):
             layer.weights[w] = firstLayer.weights[w]
             layer._trainable_weights.append(firstLayer.weights[w])
+
+# unlinks weights prior to saving
+def unlinkWeights (model):
+    foundWeights = []
+    for layer in model.layers:
+        if not layer.weights:
+            continue
+        if hasattr(layer, '__trainable_weights'):
+            layer._trainable_weights = layer.__trainable_weights
+            del layer.__trainable_weights
+        for w in range(len(layer.weights)):
+            weight = layer.weights[w]
+            if weight in foundWeights:
+                layer.weights[w] = tf.Variable(weight)
+            foundWeights.append(weight)
 
 # copies weights from one model to another
 def copyWeights (fromModel, toModel, fromPrefix='', toPrefix=''):
@@ -103,10 +120,20 @@ def copyWeights (fromModel, toModel, fromPrefix='', toPrefix=''):
     for layer in fromModel.layers:
         fromByName[layer.name] = layer
     for layer in toModel.layers:
-        fromLayer = fromByName[layer.name.replace(toPrefix, fromPrefix, 1)]
+        fromLayerName = layer.name.replace(toPrefix, fromPrefix, 1)
+        if not hasattr(fromByName, fromLayerName):
+            return
+        fromLayer = fromByName[fromLayerName]
         if not fromLayer:
+            print ("unable to find layer {0}".format(fromLayer))
             continue
-        for i in range(len(layer.weights)):
-            w = layer.weights[i]
-            fromW = fromLayer.weights[i]
-            w.assign(fromW)
+        # if hasattr(layer, 'bias'):
+        #    layer.bias.assign(fromLayer.bias)
+        # for i in range(len(layer._trainable_weights)):
+        #     w = layer._trainable_weights[i]
+        #     fromW = fromLayer._trainable_weights[i]
+        #     w.assign(fromW)
+        # for i in range(len(layer.weights)):
+        #     w = layer.weights[i]
+        #     fromW = fromLayer.weights[i]
+        #     w.assign(fromW)
