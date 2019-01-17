@@ -8,6 +8,10 @@ def run_output_summaries(sess, model, dataSet, outputRatio, max=100):
     nextCaseAndLabel = iterator.get_next()
     while (nextCaseAndLabel):
         step += 1
+
+        if (step >= max):
+            break
+
         nextCase = nextCaseAndLabel[0]
         nextCaseAndLabel = iterator.get_next()
 
@@ -37,6 +41,3 @@ def run_output_summaries(sess, model, dataSet, outputRatio, max=100):
             f = open("output/{0}".format(summaryName), "wb")
             f.write(png)
             f.close()
-
-            if (c >= max):
-                break

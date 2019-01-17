@@ -12,10 +12,10 @@ allDataAndLabels = load_dataset(dtype=tf.float16,
 
 model = generateModel((32, 32, 2),
                       output_filters=6,
-                      initial_filters=20,
-                      logic_filters=20,
+                      initial_filters=25,
+                      logic_filters=25,
                       kernel_size=7,
-                      rec_depth=20)
+                      rec_depth=25)
 
 linkWeights(model)
 
@@ -40,11 +40,11 @@ with tf.Session().as_default() as sess:
                               write_graph=True,
                               write_images=True)
 
-    model.fit(allDataAndLabels, epochs=100, steps_per_epoch=25, callbacks=[tensorboard])
+    model.fit(allDataAndLabels, epochs=400, steps_per_epoch=25, callbacks=[tensorboard])
 
     model.save_weights('./saved_models/garnet-r11')
     model.save("garnet_r11.h5")
 
-    run_output_summaries(sess, model, allDataAndLabels, 0.1, 100)
+    run_output_summaries(sess, model, allDataAndLabels, 0.5, 100)
 
     exit()

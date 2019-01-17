@@ -76,17 +76,17 @@ def createImageDataSetForDirectory(dir,
                 caseArray.append(fallback)
         caseArrays.append(caseArray)
 
-    print(caseArrays)
-
     def getTensors(file_list):
         dataLayers = []
         labelLayers = []
+        
         for channelNo in range(len(data_channels)):
             imageString = tf.read_file(file_list[channelNo])
             imageTensor = tf.image.decode_png(imageString, 1)
             imageTensor = tf.cast(imageTensor, dtype)
             imageTensor = tf.image.resize_images(imageTensor, data_shape)
             dataLayers.append(imageTensor)
+
         for channelNo in range(len(data_channels), len(data_channels) + len(label_channels)):
             imageString = tf.read_file(file_list[channelNo])
             imageTensor = tf.image.decode_png(imageString, 1)
@@ -97,17 +97,9 @@ def createImageDataSetForDirectory(dir,
         dataStack = tf.concat(dataLayers, len(dataLayers[0].shape) - 1)
         labelStack = tf.concat(labelLayers, len(labelLayers[0].shape) - 1)
 
-        dataStack = tf.expand_dims(dataStack, axis=0)
-        labalStack = tf.expand_dims(labelStack, axis=0)
-
         return (dataStack, labelStack)
 
-    dset = tf.data.Dataset.from_tensor_slices(caseArrays).map(getTensors)
-    # dset.output_classes = tf.Tensor
-    # dset.output_types = dtype
-    # dset.output_shapes = ([None, 32, 32, 2], [None, 32, 32, 6])
-
-    return dset
+    return tf.data.Dataset.from_tensor_slices(caseArrays).map(getTensors)
 
 # loads the dataset
 def load_dataset(dtype=tf.float16,
@@ -115,8 +107,24 @@ def load_dataset(dtype=tf.float16,
                  label_shape=(32, 32)
                  ):
     cd = path.dirname(__file__)
-    return createImageDataSetForDirectory(
+
+    circles = createImageDataSetForDirectory(
         path.join(cd, 'circles'),
         data_shape=input_shape,
         label_shape=label_shape
-    )
+        )
+
+    quads = createImageDataSetForDirectory(
+        path.join(cd, 'quads'),
+        data_shape=input_shape,
+        label_shape=label_shape
+        )
+
+    triangles = createImageDataSetForDirectory(
+        path.join(cd, 'triangles'),
+        data_shape=input_shape,
+        label_shape=label_shape
+        )
+
+    combined = circles.concatenate(quads).concatenate(triangles)
+    return combined.shuffle(50).repeat().batch(25)
