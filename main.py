@@ -6,16 +6,20 @@ from data.small_combinations import load_dataset
 from run_output import dump_images_2
 from loss import loss
 
+image_shape = (80, 80)
+
 allDataAndLabels = load_dataset(dtype=tf.float16,
-                                input_shape=(40, 40),
-                                label_shape=(40, 40))
+                                input_shape=image_shape,
+                                label_shape=image_shape)
+
+validation_subset = allDataAndLabels.take(20)
 
 # load old model first so that the new one can initialize properly
 # oldModel = keras.models.load_model("garnet_r15.h5", compile=False)
 # oldModel.load_weights("./saved_models/garnet_r15")
 
 # build new model
-model = generateModel((40, 40, 2),
+model = generateModel((image_shape[0], image_shape[1], 2),
                       output_filters=5,
                       initial_filters=8,
                       logic_filters=32,
@@ -27,8 +31,8 @@ model = generateModel((40, 40, 2),
 with tf.Session().as_default() as sess:
     sess.run(tf.global_variables_initializer())
 
-    # model = keras.models.load_model("garnet_r16.h5", compile=False)
-    model.load_weights("./saved_models/garnet_r16", by_name=True)
+    # model = keras.models.load_model("garnet_r17.h5", compile=False)
+    model.load_weights("./saved_models/garnet_r17", by_name=True)
 
     # link repeated layers
     linkWeights(model, offset=2)
@@ -52,14 +56,18 @@ with tf.Session().as_default() as sess:
                                               )
 
     # do the math
-    model.fit(allDataAndLabels, epochs=50, steps_per_epoch=50, callbacks=[tensorboard])
+    model.fit(allDataAndLabels,
+              epochs=500,
+              steps_per_epoch=50,
+              callbacks=[tensorboard]
+              )
 
     # unlink layers prior to saving
     unlinkWeights(model, sess)
 
     # save the model
-    model.save_weights('./saved_models/garnet_r16', save_format='h5')
-    model.save("garnet_r16.h5")
+    model.save_weights('./saved_models/garnet_r17', save_format='h5')
+    model.save("garnet_r17.h5")
 
     # save output samples and exit
     dump_images_2(sess, model, allDataAndLabels, 1, 100)

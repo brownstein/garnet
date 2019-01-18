@@ -45,7 +45,10 @@ def enumerateValidTestCases(dir, data_channels, label_channels, require_labels=F
 # creates a dataset for a given subdirectory
 def createImageDataSetForDirectory(dir,
                                    dtype=tf.float16,
-                                   data_channels=('edges', 'edges'),
+                                   data_channels=(
+                                        'fill',
+                                        'edges'
+                                    ),
                                    label_channels=(
                                         # input channel passthroughs... for now
                                         'fill',
@@ -75,13 +78,14 @@ def createImageDataSetForDirectory(dir,
         caseArray = []
         for channel in data_channels:
             caseArray.append(dataDict[n][channel])
-        for channel in label_channels:
-            if channel in labelsDict[n]:
-                caseArray.append(labelsDict[n][channel])
-        for channel in rgb_expands_to:
-            if 'rgb-shapes' in labelsDict[n]:
-                caseArray.append(labelsDict[n]['rgb-shapes'])
-        caseArrays.append(caseArray)
+            caseArray.append(dataDict[n][channel])
+            for channel in label_channels:
+                if channel in labelsDict[n]:
+                    caseArray.append(labelsDict[n][channel])
+            for channel in rgb_expands_to:
+                if 'rgb-shapes' in labelsDict[n]:
+                    caseArray.append(labelsDict[n]['rgb-shapes'])
+            caseArrays.append(caseArray)
 
     def getTensors(file_list):
         dataLayers = []
