@@ -1,88 +1,132 @@
 import tensorflow as tf
 from os import listdir, path
 
-def readAttributeImagesFromDir (dir, dtype=tf.uint8):
-    idToChannels = {}
+
+# gets a nested dict mapping test case number -> channel -> filename
+def enumerateDirectoryAsNestedDict(dir):
+    testNumberToAttributes = {}
     for filename in listdir(dir):
         if not path.isfile(path.join(dir, filename)):
             continue
-        (name, ext) = path.basename(filename).split(".")
+        (name, ext) = path.basename(filename).split('.')
         if ext != 'png':
             continue
-        nameParts = name.split("-")
+        nameParts = name.split('-')
         if len(nameParts) < 2:
             continue
         attrName = '-'.join(nameParts[0:-1])
         testNumber = nameParts[-1]
-        imageString = tf.read_file(path.join(dir, filename))
-        if testNumber not in idToChannels:
-            idToChannels[testNumber] = {}
-        if ('rgb' in nameParts):
-            imageTensor = tf.image.decode_png(imageString, 4)
-            idToChannels[testNumber][attrName] = tf.cast(imageTensor, dtype)
-        else:
+        if testNumber not in testNumberToAttributes:
+            testNumberToAttributes[testNumber] = {}
+        testNumberToAttributes[testNumber][attrName] = path.join(dir, filename)
+    return testNumberToAttributes
+
+# gets a sequence of valid test numbers and dicts to index into them
+def enumerateValidTestCases(dir, data_channels, label_channels, require_labels=False):
+    dataDict = enumerateDirectoryAsNestedDict(path.join(dir, "data"))
+    labelsDict = enumerateDirectoryAsNestedDict(path.join(dir, "labels"))
+    testNumbers = []
+
+    for testNo in dataDict.keys():
+        if testNo not in labelsDict:
+            continue
+        allValid = True
+        for channel in data_channels:
+            if channel not in dataDict[testNo]:
+                allValid = False
+        for channel in label_channels:
+            if require_labels and channel not in labelsDict[testNo]:
+                allValid = False
+        if allValid:
+            testNumbers.append(testNo)
+    return (testNumbers, dataDict, labelsDict)
+
+
+# creates a dataset for a given subdirectory
+def createImageDataSetForDirectory(dir,
+                                   dtype=tf.float16,
+                                   data_channels=('edges', 'edges'),
+                                   label_channels=(
+                                        # input channel passthroughs... for now
+                                        'fill',
+                                        'edges',
+                                        # rgb-shapes
+                                        'triangularity',
+                                        'squareness',
+                                        'circularity'
+                                   ),
+                                   data_shape=(40, 40),
+                                   label_shape=(40, 40)
+                                   ):
+    # make sure the order matches here; using some jank logic
+    rgb_expands_to=('triangularity', 'squareness', 'circularity')
+    (caseNumbers, dataDict, labelsDict) = enumerateValidTestCases(
+        dir,
+        data_channels,
+        label_channels=(
+            'fill',
+            'edges',
+            'rgb-shapes'
+        )
+    )
+
+    caseArrays = []
+    for n in caseNumbers:
+        caseArray = []
+        for channel in data_channels:
+            caseArray.append(dataDict[n][channel])
+        for channel in label_channels:
+            if channel in labelsDict[n]:
+                caseArray.append(labelsDict[n][channel])
+        for channel in rgb_expands_to:
+            if 'rgb-shapes' in labelsDict[n]:
+                caseArray.append(labelsDict[n]['rgb-shapes'])
+        caseArrays.append(caseArray)
+
+    def getTensors(file_list):
+        dataLayers = []
+        labelLayers = []
+
+        # handle input channelsand labels
+        for channelNo in range(len(data_channels)):
+            imageString = tf.read_file(file_list[channelNo])
             imageTensor = tf.image.decode_png(imageString, 1)
-            idToChannels[testNumber][attrName] = tf.cast(imageTensor, dtype)
-    return idToChannels
+            imageTensor = tf.cast(imageTensor, dtype)
+            imageTensor = tf.image.resize_images(imageTensor, data_shape)
+            dataLayers.append(imageTensor)
+        for channelNo in range(len(data_channels), len(data_channels) + len(label_channels) - 3):
+            imageString = tf.read_file(file_list[channelNo])
+            imageTensor = tf.image.decode_png(imageString, 1)
+            imageTensor = tf.cast(imageTensor, dtype)
+            imageTensor = tf.image.resize_images(imageTensor, label_shape)
+            labelLayers.append(imageTensor)
 
-def load_data_as_dataset(
-    max_tests=100,
-    dtype=tf.uint8,
-    input_shape=(40, 40),
-    label_shape=(40, 40),
-    data_attributes=('fill', 'fill'),
-    label_attributes=('fill', 'edges', 'symmetry',
-        'circularity', 'squareness', 'triangularity'),
-    cd=None
-    ):
-    cd = cd or (path.dirname(__file__))
-    subdirs = filter(path.isdir, map(lambda d: path.join(cd, d), listdir(cd)))
+        # handle RGB attributes
+        rgbChannelNo = len(data_channels) + len(label_channels) - 3
+        imageString = tf.read_file(file_list[rgbChannelNo])
+        imageTensor = tf.image.decode_png(imageString, 3)
+        imageTensor = tf.cast(imageTensor, dtype)
+        imageTensor = tf.image.resize_images(imageTensor, label_shape)
+        labelLayers.append(imageTensor)
 
-    dataById = readAttributeImagesFromDir(path.join(cd, "data"), dtype=dtype)
-    labelsById = readAttributeImagesFromDir(path.join(cd, "labels"), dtype=dtype)
+        dataStack = tf.concat(dataLayers, len(dataLayers[0].shape) - 1)
+        labelStack = tf.concat(labelLayers, len(labelLayers[0].shape) - 1)
 
-    def combined_generator():
-        for id in dataById.keys():
-            if id not in labelsById:
-                continue
-            dataByAttr = dataById[id]
-            labelsByAttr = labelsById[id]
+        return (dataStack, labelStack)
 
-            dataStack = []
-            for attr in data_attributes:
-                if attr in dataByAttr:
-                    nextLayer = dataByAttr[attr]
-                    dataStack = dataStack + [nextLayer]
-                else:
-                    dataStack = dataStack + [
-                        tf.zeros(shape=(input_shape[0], input_shape[1], 1))
-                        ]
+    return tf.data.Dataset.from_tensor_slices(caseArrays).map(getTensors)
 
-            labelStack = []
-            for attr in label_attributes:
-                if attr in labelsByAttr:
-                    nextLayer = labelsByAttr[attr]
-                    labelStack = labelStack + [tf.to_float(nextLayer)]
-                else:
-                    labelStack = labelStack + [
-                        tf.zeros(shape=(input_shape[0], input_shape[1], 1))
-                        ]
+# loads the dataset
+def load_dataset(dtype=tf.float16,
+                 input_shape=(40, 40),
+                 label_shape=(40, 40)
+                 ):
+    cd = path.dirname(__file__)
 
-            dataStack = list(tf.image.resize_images(d, input_shape) for d in dataStack)
-            dataStack = tf.concat(dataStack, len(dataStack[0].shape) - 1)
+    everything = createImageDataSetForDirectory(
+        cd,
+        data_shape=input_shape,
+        label_shape=label_shape
+        )
 
-            labelStack = list(tf.image.resize_images(l, label_shape) for l in labelStack)
-            labelStack = tf.concat(labelStack, len(labelStack[0].shape) - 1)
-
-            if (dtype not in [tf.float16, tf.float32]):
-                dataStack = tf.to_int32(dataStack)
-                labelStack = tf.to_int32(labelStack)
-
-            yield (dataStack, labelStack)
-
-    tensorPairs = [pair for pair in combined_generator()]
-    tensorData = [d for (d, _) in tensorPairs]
-    tensorLabels = [l for (_, l) in tensorPairs]
-
-    dSet = tf.data.Dataset.from_tensor_slices((tensorData, tensorLabels))
-    return dSet.batch(25).repeat()
+    return everything.shuffle(50).repeat().batch(20)

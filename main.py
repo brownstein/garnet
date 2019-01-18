@@ -1,32 +1,34 @@
 import tensorflow as tf
 from tensorflow import keras
 from model import generateModel, linkWeights, unlinkWeights, copyWeights
-from data.small_shapes_2 import load_dataset
-from run_output import dump_images
+# from data.small_shapes_2 import load_dataset
+from data.small_combinations import load_dataset
+from run_output import dump_images_2
 from loss import loss
 
 allDataAndLabels = load_dataset(dtype=tf.float16,
-                                input_shape=(32, 32),
-                                label_shape=(32, 32))
+                                input_shape=(40, 40),
+                                label_shape=(40, 40))
 
 # load old model first so that the new one can initialize properly
-oldModel = keras.models.load_model("garnet_r13.h5", compile=False)
-oldModel.load_weights("./saved_models/garnet-r13")
+# oldModel = keras.models.load_model("garnet_r15.h5", compile=False)
+# oldModel.load_weights("./saved_models/garnet_r15")
 
 # build new model
-model = generateModel((32, 32, 2),
-                      output_filters=6,
+model = generateModel((40, 40, 2),
+                      output_filters=5,
                       initial_filters=8,
                       logic_filters=32,
                       kernel_size=7,
-                      rec_depth=32,
+                      rec_depth=30,
                       prefix=''
                       )
 
 with tf.Session().as_default() as sess:
+    sess.run(tf.global_variables_initializer())
 
-    # load weights from previous run
-    copyWeights(oldModel, model, '', '')
+    # model = keras.models.load_model("garnet_r16.h5", compile=False)
+    model.load_weights("./saved_models/garnet_r16", by_name=True)
 
     # link repeated layers
     linkWeights(model, offset=2)
@@ -37,6 +39,10 @@ with tf.Session().as_default() as sess:
                   loss=loss,
                   metrics=['accuracy'])
 
+    # copy weights from previous run
+    # numCopied = copyWeights(sess, oldModel, model, '', '')
+    # print("copied {0} weights from old model".format(numCopied))
+
     # set up monitoring
     tensorboard = keras.callbacks.TensorBoard(log_dir="./graph",
                                               histogram_freq=0,
@@ -46,15 +52,15 @@ with tf.Session().as_default() as sess:
                                               )
 
     # do the math
-    model.fit(allDataAndLabels, epochs=100, steps_per_epoch=50, callbacks=[tensorboard])
+    model.fit(allDataAndLabels, epochs=50, steps_per_epoch=50, callbacks=[tensorboard])
 
     # unlink layers prior to saving
-    unlinkWeights(model)
+    unlinkWeights(model, sess)
 
     # save the model
-    model.save_weights('./saved_models/garnet-r13', save_format='h5')
-    model.save("garnet_r13.h5")
+    model.save_weights('./saved_models/garnet_r16', save_format='h5')
+    model.save("garnet_r16.h5")
 
     # save output samples and exit
-    dump_images(sess, model, allDataAndLabels, 0.25, 100)
+    dump_images_2(sess, model, allDataAndLabels, 1, 100)
     exit()

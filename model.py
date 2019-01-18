@@ -35,11 +35,6 @@ def LinkedConv2DStack (rec_depth=4, kernel_size=5, logic_filters=32,
         # trained at variable depths, you can force partial recursive
         # invariance, which should do a good job of ensuring the filters
         # become specialized
-        #
-        # repeatedLayer = keras.layers.SeparableConv2D(filters=logic_filters,
-        #     kernel_size=kernel_size, padding=padding, data_format=data_format,
-        #     activation=activation)
-
         for r in range(0, rec_depth):
             chain = keras.layers.SeparableConv2D(
                 filters=logic_filters,
@@ -54,13 +49,21 @@ def LinkedConv2DStack (rec_depth=4, kernel_size=5, logic_filters=32,
                 chain
                 ])
 
-        # remap output into specced number and position of channels
+        # remap down onto fewer channels
+        chain = keras.layers.SeparableConv2D(
+            filters = logic_filters, kernel_size = 3,
+            padding = padding, data_format = data_format,
+            activation = activation, name="{0}outputConv2d".format(prefix)
+            )(chain)
+
+        # remap output again onto final channels
         outputLogitLayer = keras.layers.SeparableConv2D(
             filters = output_filters, kernel_size = 1,
             padding = padding, data_format = data_format,
-            activation = activation)
+            activation = activation, name="{0}outputLogits".format(prefix)
+            )(chain)
 
-        return outputLogitLayer(chain)
+        return outputLogitLayer
     return apply
 
 # Generates a training-ready model
@@ -90,50 +93,61 @@ def linkWeights (model, offset=0):
         if not firstLayer:
             firstLayer = layer
             continue
+        layer._pre_link = {
+            '_trainable_weights': layer._trainable_weights,
+            'weights': [w for w in layer.weights],
+            'bias': layer.bias
+        }
         layer.bias = firstLayer.bias
-        layer.__trainable_weights = layer._trainable_weights
-        layer.__weights = layer.weights
         layer._trainable_weights = []
-        layer._trainable_weights.append(firstLayer.bias)
         for w in range(len(layer.weights)):
-            layer.weights[w] = firstLayer.weights[w]
-            layer._trainable_weights.append(firstLayer.weights[w])
+            weight = tf.identity(firstLayer.weights[w])
+            layer.weights[w] = weight
+            layer._trainable_weights.append(weight)
 
 # unlinks weights prior to saving
-def unlinkWeights (model):
+def unlinkWeights (model, sess):
     foundWeights = []
     for layer in model.layers:
-        if not layer.weights:
+        if 'repeatedConv2D_' not in layer.name:
             continue
-        if hasattr(layer, '__trainable_weights'):
-            layer._trainable_weights = layer.__trainable_weights
-            del layer.__trainable_weights
+        if not hasattr(layer, "_pre_link"):
+            continue
+        print("unlinking {0}...".format(layer.name))
+        layer._trainable_weights = layer._pre_link['_trainable_weights']
         for w in range(len(layer.weights)):
-            weight = layer.weights[w]
-            if weight in foundWeights:
-                layer.weights[w] = tf.Variable(weight)
-            foundWeights.append(weight)
+            linkedWeight = layer.weights[w]
+            unlinkedWeight = layer._pre_link['weights'][w]
+            sess.run(tf.assign(unlinkedWeight, linkedWeight))
+            layer.weights[w] = unlinkedWeight
+            layer._trainable_weights[w] = unlinkedWeight
+        del layer._pre_link
 
 # copies weights from one model to another
-def copyWeights (fromModel, toModel, fromPrefix='', toPrefix=''):
+def copyWeights (sess, fromModel, toModel, fromPrefix='', toPrefix=''):
+    successCount = 0
     fromByName = {}
+    print("copying weights from older model...")
     for layer in fromModel.layers:
         fromByName[layer.name] = layer
+        print(" | found source layer {0}".format(layer.name))
     for layer in toModel.layers:
         fromLayerName = layer.name.replace(toPrefix, fromPrefix, 1)
-        if not hasattr(fromByName, fromLayerName):
-            return
-        fromLayer = fromByName[fromLayerName]
-        if not fromLayer:
-            print ("unable to find layer {0}".format(fromLayer))
+        if fromLayerName not in fromByName:
+            print ("(!) unable to find layer {0}".format(fromLayerName))
             continue
-        # if hasattr(layer, 'bias'):
-        #    layer.bias.assign(fromLayer.bias)
-        # for i in range(len(layer._trainable_weights)):
-        #     w = layer._trainable_weights[i]
-        #     fromW = fromLayer._trainable_weights[i]
-        #     w.assign(fromW)
-        # for i in range(len(layer.weights)):
-        #     w = layer.weights[i]
-        #     fromW = fromLayer.weights[i]
-        #     w.assign(fromW)
+        fromLayer = fromByName[fromLayerName]
+        successCount += 1
+        if hasattr(layer, 'bias'):
+           sess.run(tf.assign(layer.bias, fromLayer.bias))
+        if hasattr(layer, '_trainable_weights'):
+            for i in range(len(layer._trainable_weights)):
+                w = layer._trainable_weights[i]
+                fromW = fromLayer._trainable_weights[i]
+                sess.run(tf.assign(w, fromW))
+        if hasattr(layer, 'weights'):
+            for i in range(len(layer.weights)):
+                w = layer.weights[i]
+                fromW = fromLayer.weights[i]
+                sess.run(tf.assign(w, fromW))
+    return successCount
