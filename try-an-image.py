@@ -17,7 +17,7 @@ with tf.Session().as_default() as sess:
     sess.run(tf.global_variables_initializer())
 
     # model = keras.models.load_model("garnet_r16.h5", compile=False)
-    model.load_weights("garnet_r17.h5", by_name=True)
+    model.load_weights("garnet_r19.h5", by_name=True)
 
     # link repeated layers
     linkWeights(model, offset=2)

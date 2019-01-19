@@ -21,8 +21,8 @@ def load_dataset(dtype=tf.float16,
                  data_shape=(64, 64),
                  label_shape=(64, 64),
                  data_channels=(
-                    'filled',
-                    'edges'
+                    'edges',
+                    'filled'
                  ),
                  label_channels=(
                     'edges',
@@ -31,7 +31,8 @@ def load_dataset(dtype=tf.float16,
                     'filled_square',
                     'filled_triangle'
                  ),
-                 num_cases=NUM_TEST_CASES
+                 num_cases=NUM_TEST_CASES,
+                 interleve_data_cases=True
                  ):
 
     cd = path.dirname(__file__)
@@ -39,8 +40,16 @@ def load_dataset(dtype=tf.float16,
     caseArrays = []
     for n in range(num_cases):
         caseArray = []
-        for channel in data_channels:
-            caseArray.append(path.join(cd, "data", DATA_FILENAMES[channel].format(n)))
+        if interleve_data_cases:
+            if n % 2:
+                caseArray.append(path.join(cd, "data", DATA_FILENAMES["edges"].format(n)))
+                caseArray.append(path.join(cd, "data", DATA_FILENAMES["edges"].format(n)))
+            else:
+                caseArray.append(path.join(cd, "data", DATA_FILENAMES["filled"].format(n)))
+                caseArray.append(path.join(cd, "data", DATA_FILENAMES["filled"].format(n)))
+        else:
+            for channel in data_channels:
+                caseArray.append(path.join(cd, "data", DATA_FILENAMES[channel].format(n)))
         for channel in label_channels:
             caseArray.append(path.join(cd, "labels", LABEL_FILENAMES[channel].format(n)))
         caseArrays.append(caseArray)

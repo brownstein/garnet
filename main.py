@@ -9,9 +9,20 @@ from loss import loss
 
 image_shape = (64, 64)
 
+label_channels = (
+    'edges',
+    'filled',
+    'filled_circle',
+    'filled_square',
+    'filled_triangle'
+)
+
 allDataAndLabels = load_dataset(dtype=tf.float16,
                                 data_shape=image_shape,
-                                label_shape=image_shape)
+                                label_shape=image_shape,
+                                label_channels=label_channels,
+                                interleve_data_cases=True
+                                )
 
 # validation_subset = allDataAndLabels.take(20)
 
@@ -25,15 +36,15 @@ model = generateModel((image_shape[0], image_shape[1], 2),
                       initial_filters=8,
                       logic_filters=32,
                       kernel_size=7,
-                      rec_depth=30,
+                      rec_depth=60,
                       prefix=''
                       )
 
 with tf.Session().as_default() as sess:
     sess.run(tf.global_variables_initializer())
 
-    # model = keras.models.load_model("garnet_r17.h5", compile=False)
-    model.load_weights("./saved_models/garnet_r17", by_name=True)
+    # model = keras.models.load_model("", compile=False)
+    model.load_weights("./saved_models/garnet_r19B", by_name=True)
 
     # link repeated layers
     linkWeights(model, offset=2)
@@ -58,7 +69,7 @@ with tf.Session().as_default() as sess:
 
     # do the math
     model.fit(allDataAndLabels,
-              epochs=500,
+              epochs=200,
               steps_per_epoch=50,
               callbacks=[tensorboard]
               )
@@ -67,9 +78,10 @@ with tf.Session().as_default() as sess:
     unlinkWeights(model, sess)
 
     # save the model
-    model.save_weights('./saved_models/garnet_r18', save_format='h5')
-    model.save("garnet_r18.h5")
+    model.save_weights('./saved_models/garnet_r19B', save_format='h5')
+    model.save("garnet_r19B.h5")
 
     # save output samples and exit
-    dump_images_2(sess, model, allDataAndLabels, 1, 100)
+    dump_images_2(sess, model, allDataAndLabels, 1, 100,
+                  channels=label_channels)
     exit()

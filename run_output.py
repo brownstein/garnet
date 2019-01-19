@@ -4,7 +4,16 @@ import os
 def dump_keras_weights(model):
     model.save_weights("./keras_saved")
 
-def dump_images(sess, model, dataSet, outputRatio, max=100):
+def dump_images(sess, model, dataSet, outputRatio, max=100,
+                channels=(
+                    'filled',
+                    'edges',
+                    'symmetry',
+                    'circularity',
+                    'squareness',
+                    'triangularity'
+                )
+    ):
     iterator = dataSet.make_one_shot_iterator()
     step = 0
     skipCountdown = 0
@@ -25,14 +34,6 @@ def dump_images(sess, model, dataSet, outputRatio, max=100):
         skipCountdown = 1
 
         p = model.predict(nextCase, steps=1)
-        channels = (
-            'fill',
-            'edges',
-            'symmetry',
-            'circularity',
-            'squareness',
-            'triangularity'
-        )
         c = 0
         for channelName in channels:
             summaryName="out_{0}_{1}.png".format(step, channelName)
@@ -67,11 +68,11 @@ def dump_images_2(sess, model, dataSet, outputRatio, max=100):
 
         p = model.predict(nextCase, steps=1)
         channels = (
-            'fill',
             'edges',
-            'triangularity',
+            'fill',
+            'circularity',
             'squareness',
-            'circularity'
+            'triangularity'
         )
         c = 0
         for channelName in channels:
