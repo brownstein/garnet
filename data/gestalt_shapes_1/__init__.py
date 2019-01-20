@@ -31,7 +31,7 @@ def load_dataset(dtype=tf.float16,
                  label_shape=(64, 64),
                  data_channels=(
                     'edges',
-                    'filled'
+                    'edges'
                  ),
                  label_channels=(
                     'edges',
@@ -62,10 +62,12 @@ def load_dataset(dtype=tf.float16,
                 if (path.exists(subshape_path)):
                     caseArray.append(subshape_path)
                 else:
+                    # print("fallback S {0}".format(subshape_path))
                     caseArray.append(fallback_path)
                 if path.exists(gestalt_path):
                     caseArray.append(gestalt_path)
                 else:
+                    # print("fallback G {0}".format(gestalt_path))
                     caseArray.append(fallback_path)
         caseArrays.append(caseArray)
 
