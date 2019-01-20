@@ -1,5 +1,6 @@
 # Garnet
-## An experimental NN that reuses weights for deep convolution
+## ( Gestalt Area Recognition Network )
+### An experimental NN that reuses weights for deep convolution
 
 Usage:
 - set up a virtualenv

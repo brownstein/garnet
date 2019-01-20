@@ -1,9 +1,7 @@
 import tensorflow as tf
 from tensorflow import keras
 from model import generateModel, linkWeights, unlinkWeights, copyWeights
-# from data.small_shapes_2 import load_dataset
-# from data.small_combinations import load_dataset
-from data.combined_shapes_2 import load_dataset
+from data.gestalt_shapes_1 import load_dataset
 from run_output import dump_images
 from loss import loss
 
@@ -12,16 +10,15 @@ image_shape = (64, 64)
 label_channels = (
     'edges',
     'filled',
-    'filled_circle',
-    'filled_square',
-    'filled_triangle'
+    'circles',
+    'squares',
+    'triangles'
 )
 
 allDataAndLabels = load_dataset(dtype=tf.float16,
                                 data_shape=image_shape,
                                 label_shape=image_shape,
-                                label_channels=label_channels,
-                                interleve_data_cases=True
+                                label_channels=label_channels
                                 )
 
 # validation_subset = allDataAndLabels.take(20)
@@ -36,7 +33,7 @@ model = generateModel((image_shape[0], image_shape[1], 2),
                       initial_filters=8,
                       logic_filters=32,
                       kernel_size=7,
-                      rec_depth=60,
+                      rec_depth=40,
                       prefix=''
                       )
 
@@ -44,7 +41,7 @@ with tf.Session().as_default() as sess:
     sess.run(tf.global_variables_initializer())
 
     # model = keras.models.load_model("", compile=False)
-    model.load_weights("./saved_models/garnet_r19C", by_name=True)
+    model.load_weights("./saved_models/garnet_r20", by_name=True)
 
     # link repeated layers
     linkWeights(model, offset=2)
@@ -69,7 +66,7 @@ with tf.Session().as_default() as sess:
 
     # do the math
     model.fit(allDataAndLabels,
-              epochs=2,
+              epochs=200,
               steps_per_epoch=50,
               callbacks=[tensorboard]
               )
@@ -78,8 +75,8 @@ with tf.Session().as_default() as sess:
     unlinkWeights(model, sess)
 
     # save the model
-    model.save_weights('./saved_models/garnet_r19C', save_format='h5')
-    model.save("garnet_r19C.h5")
+    model.save_weights('./saved_models/garnet_r21', save_format='h5')
+    model.save("garnet_r21.h5")
 
     # save output samples and exit
     dump_images(sess, model, allDataAndLabels, 100, 0.3,

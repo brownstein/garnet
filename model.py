@@ -4,7 +4,7 @@ from tensorflow import keras
 # Linked layer stack helper - this is how you build RCNNs cheaply!
 def LinkedConv2DStack (rec_depth=4, kernel_size=5, logic_filters=32,
     initial_filters=16, output_filters=8, activation='selu', padding='same',
-    data_format='channels_last', prefix=''):
+    data_format='channels_last', prefix='', repeatPrefix='repeatedConv2D_'):
     def apply (inputLayer, inputLogits=None):
 
         # this maps logit suggestions to initial logic weights, or the input
@@ -42,7 +42,7 @@ def LinkedConv2DStack (rec_depth=4, kernel_size=5, logic_filters=32,
                 padding=padding,
                 data_format=data_format,
                 activation=activation,
-                name="{0}repeatedConv2D_{1}".format(prefix, r)
+                name="{0}{1}{2}".format(prefix, repeatPrefix, r)
                 )(chain)
             chain = keras.layers.Concatenate(concatAxis)([
                 initialLogitChain,
@@ -81,11 +81,11 @@ def generateModel (input_shape=(64, 64, 1), noise_level=0.1, prefix='',
     return keras.Model(inputs=inputLayer, outputs=outputLayer)
 
 # links weights between conv layers
-def linkWeights (model, offset=0):
+def linkWeights (model, offset=0, targetLayersWithPrefix='repeatedConv2D_'):
     firstLayer = None
     layerNo = 0
     for layer in model.layers:
-        if 'repeatedConv2D_' not in layer.name:
+        if targetLayersWithPrefix not in layer.name:
             continue
         layerNo += 1
         if layerNo <= offset:
@@ -106,11 +106,11 @@ def linkWeights (model, offset=0):
             layer._trainable_weights.append(weight)
 
 # unlinks weights prior to saving
-def unlinkWeights (model, sess):
+def unlinkWeights (model, sess, targetLayersWithPrefix='repeatedConv2D_'):
     foundWeights = []
     ops = []
     for layer in model.layers:
-        if 'repeatedConv2D_' not in layer.name:
+        if targetLayersWithPrefix not in layer.name:
             continue
         if not hasattr(layer, "_pre_link"):
             continue
