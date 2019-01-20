@@ -108,6 +108,7 @@ def linkWeights (model, offset=0):
 # unlinks weights prior to saving
 def unlinkWeights (model, sess):
     foundWeights = []
+    ops = []
     for layer in model.layers:
         if 'repeatedConv2D_' not in layer.name:
             continue
@@ -118,10 +119,11 @@ def unlinkWeights (model, sess):
         for w in range(len(layer.weights)):
             linkedWeight = layer.weights[w]
             unlinkedWeight = layer._pre_link['weights'][w]
-            sess.run(tf.assign(unlinkedWeight, linkedWeight))
+            ops.append(tf.assign(unlinkedWeight, linkedWeight))
             layer.weights[w] = unlinkedWeight
             layer._trainable_weights[w] = unlinkedWeight
         del layer._pre_link
+    sess.run(ops)
 
 # copies weights from one model to another
 def copyWeights (sess, fromModel, toModel, fromPrefix='', toPrefix=''):

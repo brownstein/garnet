@@ -4,7 +4,7 @@ from model import generateModel, linkWeights, unlinkWeights, copyWeights
 # from data.small_shapes_2 import load_dataset
 # from data.small_combinations import load_dataset
 from data.combined_shapes_2 import load_dataset
-from run_output import dump_images_2
+from run_output import dump_images
 from loss import loss
 
 image_shape = (64, 64)
@@ -44,7 +44,7 @@ with tf.Session().as_default() as sess:
     sess.run(tf.global_variables_initializer())
 
     # model = keras.models.load_model("", compile=False)
-    model.load_weights("./saved_models/garnet_r19B", by_name=True)
+    model.load_weights("./saved_models/garnet_r19C", by_name=True)
 
     # link repeated layers
     linkWeights(model, offset=2)
@@ -69,7 +69,7 @@ with tf.Session().as_default() as sess:
 
     # do the math
     model.fit(allDataAndLabels,
-              epochs=200,
+              epochs=2,
               steps_per_epoch=50,
               callbacks=[tensorboard]
               )
@@ -78,10 +78,10 @@ with tf.Session().as_default() as sess:
     unlinkWeights(model, sess)
 
     # save the model
-    model.save_weights('./saved_models/garnet_r19B', save_format='h5')
-    model.save("garnet_r19B.h5")
+    model.save_weights('./saved_models/garnet_r19C', save_format='h5')
+    model.save("garnet_r19C.h5")
 
     # save output samples and exit
-    dump_images_2(sess, model, allDataAndLabels, 1, 100,
-                  channels=label_channels)
+    dump_images(sess, model, allDataAndLabels, 100, 0.3,
+                channels=label_channels)
     exit()
