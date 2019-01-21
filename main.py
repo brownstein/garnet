@@ -8,7 +8,6 @@ from loss import loss
 image_shape = (64, 64)
 
 label_channels = (
-    'edges',
     'filled',
     'circles',
     'squares',
@@ -28,23 +27,25 @@ allDataAndLabels = load_dataset(dtype=tf.float16,
 # oldModel.load_weights("./saved_models/garnet_r15")
 
 # build new model
-model = generateModel((image_shape[0], image_shape[1], 2),
-                      output_filters=5,
+model = generateModel((image_shape[0], image_shape[1], 1),
+                      output_filters=4,
                       initial_filters=8,
-                      logic_filters=32,
+                      logic_filters=24,
                       kernel_size=7,
                       rec_depth=40,
-                      prefix=''
+                      prefix='',
+                      groups=2,
                       )
 
 with tf.Session().as_default() as sess:
     sess.run(tf.global_variables_initializer())
 
     # model = keras.models.load_model("", compile=False)
-    model.load_weights("./saved_models/garnet_r19", by_name=True)
+    model.load_weights("./saved_models/garnet_r22", by_name=True)
 
     # link repeated layers
-    linkWeights(model, offset=2)
+    linkWeights(model, offset=2, targetLayersWithPrefix='repeatedConv2D_')
+    linkWeights(model, offset=1, targetLayersWithPrefix='secondary_repeatedConv2D_')
 
     # summarize and compile model
     model.summary()
@@ -66,17 +67,18 @@ with tf.Session().as_default() as sess:
 
     # do the math
     model.fit(allDataAndLabels,
-              epochs=200,
+              epochs=2000,
               steps_per_epoch=50,
               callbacks=[tensorboard]
               )
 
     # unlink layers prior to saving
-    unlinkWeights(model, sess)
+    unlinkWeights(model, sess, targetLayersWithPrefix='repeatedConv2D_')
+    unlinkWeights(model, sess, targetLayersWithPrefix='secondary_repeatedConv2D_')
 
     # save the model
-    model.save_weights('./saved_models/garnet_r21', save_format='h5')
-    model.save("garnet_r21.h5")
+    model.save_weights('./saved_models/garnet_r22', save_format='h5')
+    model.save("garnet_r22.h5")
 
     # save output samples and exit
     dump_images(sess, model, allDataAndLabels, 100, 0.3,

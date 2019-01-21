@@ -31,10 +31,8 @@ def load_dataset(dtype=tf.float16,
                  label_shape=(64, 64),
                  data_channels=(
                     'edges',
-                    'edges'
                  ),
                  label_channels=(
-                    'edges',
                     'filled',
                     'circles',
                     'squares',
@@ -47,14 +45,17 @@ def load_dataset(dtype=tf.float16,
     cd = path.dirname(__file__)
     fallback_path = path.join(cd, "labels", LABEL_FALLBACK)
 
+    numNormalDataChannels = 0
     caseArrays = []
     for n in range(num_cases):
         caseArray = []
+        numNormalDataChannels = 0
         for channel in data_channels:
             caseArray.append(path.join(cd, "data", DATA_FILENAMES[channel].format(n)))
         for channel in label_channels:
             if channel in ['edges', 'filled']:
                 caseArray.append(path.join(cd, "labels", LABEL_FILENAMES[channel].format(n)))
+                numNormalDataChannels += 1
             else:
                 subshape_path = path.join(cd, "labels", LABEL_FILENAMES[channel].format(n))
                 gestalt_channel = "gestalt_{0}".format(PLURAL_IMAP[channel])
@@ -62,12 +63,10 @@ def load_dataset(dtype=tf.float16,
                 if (path.exists(subshape_path)):
                     caseArray.append(subshape_path)
                 else:
-                    # print("fallback S {0}".format(subshape_path))
                     caseArray.append(fallback_path)
                 if path.exists(gestalt_path):
                     caseArray.append(gestalt_path)
                 else:
-                    # print("fallback G {0}".format(gestalt_path))
                     caseArray.append(fallback_path)
         caseArrays.append(caseArray)
 
@@ -82,16 +81,16 @@ def load_dataset(dtype=tf.float16,
             imageTensor = tf.image.resize_images(imageTensor, data_shape)
             dataLayers.append(imageTensor)
 
-        for channelNo in range(2):
+        for channelNo in range(1):
             channelNoWithOffset = channelNo + len(data_channels)
             imageString = tf.read_file(file_list[channelNoWithOffset])
             imageTensor = tf.image.decode_png(imageString, 1)
             imageTensor = tf.cast(imageTensor, dtype)
             imageTensor = tf.image.resize_images(imageTensor, data_shape)
-            labelLayers.append(imageTensor)
+            labelLayers.append(tf.multiply(imageTensor, 0.25))
 
-        for channelNo in range(len(label_channels) - 2):
-            channelNoWithOffset = channelNo * 2 + 2 + len(data_channels)
+        for channelNo in range(len(label_channels) - numNormalDataChannels):
+            channelNoWithOffset = channelNo * 2 + numNormalDataChannels + len(data_channels)
             subImageString = tf.read_file(file_list[channelNoWithOffset])
             subImageTensor = tf.image.decode_png(imageString, 1)
             subImageTensor = tf.cast(imageTensor, dtype)
@@ -100,7 +99,7 @@ def load_dataset(dtype=tf.float16,
             gestaltImageTensor = tf.image.decode_png(imageString, 1)
             gestaltImageTensor = tf.cast(imageTensor, dtype)
             gestaltImageTensor = tf.image.resize_images(imageTensor, label_shape)
-            combinedImageTensor = tf.add(subImageTensor, gestaltImageTensor)
+            combinedImageTensor = tf.add(tf.multiply(0.5, subImageTensor), gestaltImageTensor)
             labelLayers.append(combinedImageTensor)
 
         dataStack = tf.concat(dataLayers, len(dataLayers[0].shape) - 1)

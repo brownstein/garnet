@@ -8,9 +8,9 @@ def dump_images(sess, model, dataSet, max=100, caseRatio=1,
     channels = (
         'edges',
         'fill',
-        'circularity',
-        'squareness',
-        'triangularity'
+        'circles',
+        'squares',
+        'triangles'
         )
     ):
     iterator = dataSet.make_one_shot_iterator()
