@@ -22,10 +22,10 @@ def load_dataset(dtype=tf.float16,
                  label_shape=(64, 64),
                  data_channels=(
                     'edges',
-                    'filled'
+                    #'filled'
                  ),
                  label_channels=(
-                    'edges',
+                    #'edges',
                     'filled',
                     'filled_circle',
                     'filled_square',

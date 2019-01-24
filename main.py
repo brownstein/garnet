@@ -1,36 +1,47 @@
 import tensorflow as tf
 from tensorflow import keras
 from model import generateModel, linkWeights, unlinkWeights, copyWeights
-from data.gestalt_shapes_1 import load_dataset
+# from data.variably_sized_shapes import load_dataset
+from data.gestalt_shapes_2 import load_dataset as load_gestalt
+from data.variably_sized_shapes import load_dataset as load_vsized
+
 from run_output import dump_images
 from loss import loss
 
 image_shape = (64, 64)
 
 label_channels = (
-    'filled',
-    'circles',
-    'squares',
-    'triangles'
+    'fill',
+    'edges',
+    'square',
+    'circle',
+    'triangle'
 )
 
-allDataAndLabels = load_dataset(dtype=tf.float16,
-                                data_shape=image_shape,
-                                label_shape=image_shape,
-                                label_channels=label_channels
-                                )
+gestaltDataAndLabels = load_gestalt(
+    dtype=tf.float16,
+    data_shape=image_shape,
+    label_shape=image_shape,
+    label_channels=label_channels,
+    include_gestalt_shapes=True,
+    repeat=False
+)
+variablySizedDataAndLabels = load_vsized(
+    dtype=tf.float16,
+    data_shape=image_shape,
+    label_shape=image_shape,
+    label_channels=label_channels,
+    repeat=False
+)
 
-# validation_subset = allDataAndLabels.take(20)
-
-# load old model first so that the new one can initialize properly
-# oldModel = keras.models.load_model("garnet_r15.h5", compile=False)
-# oldModel.load_weights("./saved_models/garnet_r15")
+allDataAndLabels = gestaltDataAndLabels.concatenate(variablySizedDataAndLabels)
+allDataAndLabels = allDataAndLabels.shuffle(100).repeat()
 
 # build new model
 model = generateModel((image_shape[0], image_shape[1], 1),
-                      output_filters=4,
+                      output_filters=5,
                       initial_filters=8,
-                      logic_filters=24,
+                      logic_filters=32,
                       kernel_size=7,
                       rec_depth=40,
                       prefix='',
@@ -41,7 +52,7 @@ with tf.Session().as_default() as sess:
     sess.run(tf.global_variables_initializer())
 
     # model = keras.models.load_model("", compile=False)
-    model.load_weights("./saved_models/garnet_r22", by_name=True)
+    model.load_weights("./saved_models/garnet_r2B4", by_name=True)
 
     # link repeated layers
     linkWeights(model, offset=2, targetLayersWithPrefix='repeatedConv2D_')
@@ -67,7 +78,7 @@ with tf.Session().as_default() as sess:
 
     # do the math
     model.fit(allDataAndLabels,
-              epochs=2000,
+              epochs=1000,
               steps_per_epoch=50,
               callbacks=[tensorboard]
               )
@@ -77,10 +88,12 @@ with tf.Session().as_default() as sess:
     unlinkWeights(model, sess, targetLayersWithPrefix='secondary_repeatedConv2D_')
 
     # save the model
-    model.save_weights('./saved_models/garnet_r22', save_format='h5')
-    model.save("garnet_r22.h5")
+    model.save_weights('./saved_models/garnet_r25', save_format='h5')
+    model.save("garnet_r25.h5")
 
-    # save output samples and exit
+    # dump output before weights are unlinked
     dump_images(sess, model, allDataAndLabels, 100, 0.3,
                 channels=label_channels)
+
+    # save output samples and exit
     exit()
