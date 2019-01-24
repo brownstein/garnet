@@ -1,7 +1,6 @@
 import tensorflow as tf
 from tensorflow import keras
 from model import generateModel, linkWeights, unlinkWeights, copyWeights
-# from data.variably_sized_shapes import load_dataset
 from data.gestalt_shapes_2 import load_dataset as load_gestalt
 from data.variably_sized_shapes import load_dataset as load_vsized
 
@@ -52,7 +51,7 @@ with tf.Session().as_default() as sess:
     sess.run(tf.global_variables_initializer())
 
     # model = keras.models.load_model("", compile=False)
-    model.load_weights("./saved_models/garnet_r2B4", by_name=True)
+    model.load_weights("./saved_models/garnet_r25_weights.h5", by_name=True)
 
     # link repeated layers
     linkWeights(model, offset=2, targetLayersWithPrefix='repeatedConv2D_')
@@ -78,7 +77,7 @@ with tf.Session().as_default() as sess:
 
     # do the math
     model.fit(allDataAndLabels,
-              epochs=1000,
+              epochs=10,
               steps_per_epoch=50,
               callbacks=[tensorboard]
               )
@@ -88,8 +87,8 @@ with tf.Session().as_default() as sess:
     unlinkWeights(model, sess, targetLayersWithPrefix='secondary_repeatedConv2D_')
 
     # save the model
-    model.save_weights('./saved_models/garnet_r25', save_format='h5')
-    model.save("garnet_r25.h5")
+    model.save_weights('./saved_models/garnet_r25_weights.h5', save_format='h5')
+    model.save("./saved_models/garnet_r25_full.h5")
 
     # dump output before weights are unlinked
     dump_images(sess, model, allDataAndLabels, 100, 0.3,

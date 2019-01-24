@@ -3,24 +3,26 @@ from tensorflow import keras
 from model import generateModel, linkWeights
 from loss import loss
 
-# build new model
-model = generateModel((276, 361, 2),
+image_shape = (276, 361)
+
+model = generateModel((image_shape[0], image_shape[1], 1),
                       output_filters=5,
                       initial_filters=8,
                       logic_filters=32,
                       kernel_size=7,
-                      rec_depth=80,
-                      prefix=''
+                      rec_depth=40,
+                      prefix='',
+                      groups=2,
                       )
 
 with tf.Session().as_default() as sess:
     sess.run(tf.global_variables_initializer())
 
-    # model = keras.models.load_model("garnet_r16.h5", compile=False)
-    model.load_weights("garnet_r19.h5", by_name=True)
+    # model = keras.models.load_model("./saved_models/garnet_r25_full.h5", compile=False)
+    model.load_weights("./saved_models/garnet_r25_weights.h5", by_name=True)
 
     # link repeated layers
-    linkWeights(model, offset=2)
+    # linkWeights(model, offset=2)
 
     # summarize and compile model
     model.compile(optimizer='adam',
@@ -30,7 +32,8 @@ with tf.Session().as_default() as sess:
     imageString = tf.read_file("bg_test.jpg")
     imageTensor = tf.image.decode_jpeg(imageString, 3)
     imageTensor = tf.cast(imageTensor, tf.float16)
-    imageTensor = imageTensor[:, :, 0:2]
+    imageTensor = tf.image.resize_images(imageTensor, image_shape)
+    imageTensor = imageTensor[:, :, 0:1]
     imageTensor = tf.expand_dims(imageTensor, 0)
 
     p = model.predict(imageTensor, steps=1)
