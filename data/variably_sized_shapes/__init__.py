@@ -72,7 +72,6 @@ def load_dataset(dtype=tf.float16,
             # edges and fills are provided as data, so use data paths
             if channel in ['edges', 'fill']:
                 caseArray.append(path.join(dataPath, DATA_FILENAMES[channel].format(n)))
-                caseArray.append(fallbackPath)
             # otherwise use shape path logic
             else:
                 smallShapePath = path.join(labelsPath, LABEL_FILENAMES["small"]["fill"][channel].format(n))

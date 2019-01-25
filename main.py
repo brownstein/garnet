@@ -34,7 +34,7 @@ variablySizedDataAndLabels = load_vsized(
 )
 
 allDataAndLabels = gestaltDataAndLabels.concatenate(variablySizedDataAndLabels)
-allDataAndLabels = allDataAndLabels.shuffle(100).repeat()
+allDataAndLabels = allDataAndLabels.shuffle(400).repeat()
 
 # build new model
 model = generateModel((image_shape[0], image_shape[1], 1),
@@ -42,9 +42,9 @@ model = generateModel((image_shape[0], image_shape[1], 1),
                       initial_filters=8,
                       logic_filters=32,
                       kernel_size=7,
-                      rec_depth=40,
+                      rec_depth=60,
                       prefix='',
-                      groups=2,
+                      groups=1,
                       )
 
 with tf.Session().as_default() as sess:
@@ -77,7 +77,7 @@ with tf.Session().as_default() as sess:
 
     # do the math
     model.fit(allDataAndLabels,
-              epochs=10,
+              epochs=250,
               steps_per_epoch=50,
               callbacks=[tensorboard]
               )
@@ -87,8 +87,8 @@ with tf.Session().as_default() as sess:
     unlinkWeights(model, sess, targetLayersWithPrefix='secondary_repeatedConv2D_')
 
     # save the model
-    model.save_weights('./saved_models/garnet_r25_weights.h5', save_format='h5')
-    model.save("./saved_models/garnet_r25_full.h5")
+    model.save_weights('./saved_models/garnet_r26_weights.h5', save_format='h5')
+    model.save("./saved_models/garnet_r26_full.h5")
 
     # dump output before weights are unlinked
     dump_images(sess, model, allDataAndLabels, 100, 0.3,
