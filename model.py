@@ -2,111 +2,107 @@ import tensorflow as tf
 from tensorflow import keras
 import math
 
-# Linked layer stack helper - this is how you build RCNNs cheaply!
-def LinkedConv2DStack (rec_depth=4, kernel_size=5, logic_filters=32,
-    initial_filters=16, activation='selu', padding='same',
-    data_format='channels_last', prefix='', repeatPrefix='repeatedConv2D_'):
-    def apply (inputLayer, inputLogits=None):
+# helper for linked conv stacks with dilation components
+def LinkedConv2DMultiStack (
+    depth=4,
+    kernel_size=5,
+    initial_filters=16,
+    logic_filters=16,
+    activation='selu',
+    padding='same',
+    data_format='channels_last',
+    num_variations=2,
+    initial_logits_prefix=(
+        'initial_logits_'
+    ),
+    repeated_prefixes=(
+        'repeated_',
+        'repeatedDilation_'
+    ),
+    extra_conv2d_props=(
+        {},
+        { "dilation_rate": 2 }
+    )):
+    def apply (input_layer):
 
-        # this maps logit suggestions to initial logic weights, or the input
-        # layer if no logit suggestion layer is specified
+        # this maps (and sanitizes) the input layer
         initialLogitLayer = keras.layers.Conv2D(
             filters=initial_filters,
             kernel_size=kernel_size,
             padding=padding,
             data_format=data_format,
             activation=activation,
-            name="{0}conv2d".format(prefix)
+            name="{0}conv2D".format(initial_logits_prefix)
             )
 
-        chain = initialLogitLayer(inputLayer)
-        initialLogitChain = chain
+        chain = initialLogitLayer(input_layer)
+        initialLogits = chain
 
         concatAxis = 3 if data_format == 'channels_last' else 1
 
-        # was doing this, but it's just an extra concat operation
-        # chain = keras.layers.Concatenate(concatAxis)([
-        #     inputLayer,
-        #     initialLogitLayer(
-        #         inputLayer
-        #         if inputLogits is None
-        #         else inputLogits
-        #         )
-        #     ])
-        # initialLogitChain = chain
+        # repeat the same linked weights for most of the model's depth
+        for d in range(0, depth):
 
-        # this is where the good stuff happens - concept diffusion and
-        # intersection processing by way of filter mixing.
-        # trained at variable depths, you can force partial recursive
-        # invariance, which should do a good job of ensuring the filters
-        # become specialized
-        for r in range(0, rec_depth):
-            chain = keras.layers.SeparableConv2D(
-                filters=logic_filters,
-                kernel_size=kernel_size,
-                padding=padding,
-                data_format=data_format,
-                activation=activation,
-                name="{0}{1}{2}".format(prefix, repeatPrefix, r)
+            # create both forks of the chain
+            # one is raw conv, one is dialated conv to move data around faster
+            forksToConcat = [initialLogits]
+            for v in range(num_variations):
+                chainFork = keras.layers.SeparableConv2D(
+                    filters=logic_filters,
+                    kernel_size=kernel_size,
+                    padding=padding,
+                    data_format=data_format,
+                    activation=activation,
+                    name="{0}conv2D_{1}".format(repeated_prefixes[v], d),
+                    **extra_conv2d_props[v]
                 )(chain)
-            chain = keras.layers.Concatenate(concatAxis)([
-                initialLogitChain,
-                chain
-                ])
+                forksToConcat.append(chainFork)
 
-        # remap down onto fewer channels
-        with tf.name_scope("{0}outputConv2d".format(prefix)):
-            chain = keras.layers.SeparableConv2D(
-                filters = logic_filters, kernel_size = 3,
-                padding = padding, data_format = data_format,
-                activation = activation, name="{0}outputConv2d".format(prefix)
-                )(chain)
-
-            tf.summary.histogram('activations', chain)
+            # merge them
+            chain = keras.layers.Concatenate(concatAxis)(forksToConcat)
 
         return chain
     return apply
 
+
 # Generates a training-ready model
 def generateModel (input_shape=(64, 64, 1),
                    noise_level=0.15,
-                   prefix='',
-                   groups=1,
-                   groupPrefixes=('', 'secondary_'),
-                   rec_depth=4,
+                   depth=10,
                    output_filters = 8,
                    padding='same',
                    activation='selu',
                    data_format='channels_last',
-                  **kwargs):
+                   **kwargs
+                  ):
 
     # create input and give it some noise to process
     inputLayer = keras.layers.Input(input_shape)
     chain = inputLayer
 
-    # build linked segments
-    for g in range(groups):
-        groupPrefix = groupPrefixes[g]
+    # add noise between linked sets to keep things interesting
+    chain = keras.layers.GaussianNoise(
+        noise_level,
+        name="gaussianNoise_0"
+        )(chain)
 
-        # add noise between linked sets to keep things interesting
-        chain = keras.layers.GaussianNoise(
-            noise_level,
-            name="{0}gaussianNoise_{1}".format(prefix, g)
-            )(chain)
-
-        # build repeater stack
-        chain = LinkedConv2DStack(prefix="{0}{1}".format(prefix, groupPrefix),
-                                  rec_depth=math.floor(rec_depth / groups),
-                                  data_format=data_format,
-                                  activation=activation,
-                                  padding=padding,
-                                  **kwargs)(chain)
+    # build repeater stack
+    chain = LinkedConv2DMultiStack(
+        depth=depth,
+        data_format=data_format,
+        activation=activation,
+        padding=padding,
+        **kwargs
+        )(chain)
 
     # remap output again onto final channels
     chain = keras.layers.SeparableConv2D(
-        filters = output_filters, kernel_size = 1,
-        padding = padding, data_format = data_format,
-        activation = activation, name="{0}outputLogits".format(prefix)
+        filters = output_filters,
+        kernel_size = 1,
+        padding = padding,
+        data_format = data_format,
+        activation = activation,
+        name = "outputLogits"
         )(chain)
 
     # construct model and we're done!
