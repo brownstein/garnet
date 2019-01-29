@@ -21,7 +21,7 @@ def LinkedConv2DMultiStack (
     ),
     extra_conv2d_props=(
         {},
-        { "dilation_rate": 2 }
+        { "dilation_rate": 3 }
     )):
     def apply (input_layer):
 
