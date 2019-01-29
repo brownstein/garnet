@@ -47,7 +47,7 @@ model = generateModel((image_shape[0], image_shape[1], 1),
                       num_variations=2,
                       extra_conv2d_props = (
                         {},
-                        { dilation_rate: 3 }
+                        { 'dilation_rate': 3 }
                       )
                       )
 
