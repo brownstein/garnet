@@ -41,9 +41,15 @@ def dump_images(sess, model, dataSet, max=100, caseRatio=1,
         p = model.predict(predictCase, steps=1)
         c = 0
         for channelName in channels:
+
+            scaledSlice = p[:,:,:,c:c+1]
+            scaledSlice = tf.multiply(scaledSlice, 255)
+            scaledSlice = tf.clip_by_value(scaledSlice, 0, 255)
+            scaledSlice = tf.cast(scaledSlice, tf.uint8)
+
             summaryName="out_{0}_{1}.png".format(step, channelName)
             summaryImage = tf.summary.image(name=summaryName,
-                                            tensor=p[:,:,:,c:c+1])
+                                            tensor=scaledSlice)
 
             summary = tf.summary.Summary.FromString(summaryImage.eval())
             png = summary.value[0].image.encoded_image_string

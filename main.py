@@ -43,7 +43,7 @@ model = generateModel((image_shape[0], image_shape[1], 1),
                       initial_filters=8,
                       logic_filters=32,
                       kernel_size=7,
-                      depth=64,
+                      depth=32,
                       num_variations=2,
                       extra_conv2d_props = (
                         {},
@@ -55,7 +55,7 @@ with tf.Session().as_default() as sess:
     sess.run(tf.global_variables_initializer())
 
     # model = keras.models.load_model("", compile=False)
-    # model.load_weights("./saved_models/garnet_rev_29_weights.h5", by_name=True)
+    model.load_weights("./saved_models/garnet_rev_29_weights.h5", by_name=True)
 
     # link repeated layers
     linkWeights(model, offset=3, targetLayersWithPrefix='repeated_')
@@ -81,8 +81,8 @@ with tf.Session().as_default() as sess:
 
     # do the math
     model.fit(allDataAndLabels,
-              epochs=1000,
-              steps_per_epoch=30,
+              epochs=1,
+              steps_per_epoch=50,
               callbacks=[tensorboard]
               )
 
@@ -91,8 +91,8 @@ with tf.Session().as_default() as sess:
     unlinkWeights(model, sess, targetLayersWithPrefix='repeatedDilation_')
 
     # save the model
-    model.save_weights('./saved_models/garnet_rev_29_weights.h5', save_format='h5')
-    model.save("./saved_models/garnet_rev_29_full.h5")
+    model.save_weights('./saved_models/garnet_rev_30_weights.h5', save_format='h5')
+    model.save("./saved_models/garnet_rev_30_full.h5")
 
     # dump output before weights are unlinked
     dump_images(sess, model, allDataAndLabels, 100, 0.3,
