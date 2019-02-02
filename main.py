@@ -1,7 +1,7 @@
 import tensorflow as tf
 from tensorflow import keras
 from model import generateModel, linkAllWeights, unlinkAllWeights, copyWeights
-# from data.gestalt_shapes_4 import load_dataset as load_gestalt
+from data.gestalt_shapes_4 import load_dataset as load_gestalt
 # from data.variably_sized_shapes import load_dataset as load_vsized
 from data.combined_shapes_3 import load_dataset
 
