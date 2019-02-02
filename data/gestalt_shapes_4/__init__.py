@@ -26,9 +26,9 @@ LABEL_FILENAMES = {
             "circle": "case_{0}_gestalt_circle_edges.png"
         },
         "fill": {
-            "triangle": "case_{0}_gestalt_triangle_filled.png",
-            "square": "case_{0}_gestalt_square_filled.png",
-            "circle": "case_{0}_gestalt_circle_filled.png"
+            "triangle": "case_{0}_gestalt_triangle_filled_blurred_.png",
+            "square": "case_{0}_gestalt_square_filled_blurred_.png",
+            "circle": "case_{0}_gestalt_circle_filled_blurred_.png"
         }
     }
 }

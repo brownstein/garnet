@@ -74,7 +74,7 @@ def load_dataset(dtype=tf.float16,
                 caseArray.append(path.join(dataPath, DATA_FILENAMES[channel].format(n)))
             # otherwise use shape path logic
             else:
-                smallShapePath = path.join(labelsPath, LABEL_FILENAMES["normal"]["fill"][channel].format(n, channel))
+                smallShapePath = path.join(labelsPath, LABEL_FILENAMES["blurred"]["fill"][channel].format(n, channel))
                 if (path.exists(smallShapePath)):
                     caseArray.append(smallShapePath)
                 else:

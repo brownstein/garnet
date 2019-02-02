@@ -7,13 +7,13 @@ def LinkedConv2DMultiStack (
     # basic props
     depth=10,
     kernel_size=5,
-    transfer_dilation=3,
+    transfer_dilation=2,
 
     # filter depths
-    initial_filters=16,
-    logic_filters=24,
-    transfer_filters=12,
-    mergedown_filters=24,
+    initial_filters=8,
+    logic_filters=30,
+    transfer_filters=4,
+    mergedown_filters=36,
 
     # things that shouldn't change often
     activation='selu',
@@ -187,10 +187,34 @@ def unlinkWeights (model, sess, targetLayersWithPrefix='repeatedConv2D_'):
         del layer._pre_link
     sess.run(ops)
 
+# helper to copy weights from one tensor to another
+def copySingleTensor(fromTensor, toTensor):
+    toShape = [a for a in toTensor.shape]
+    fromShape = [a for a in fromTensor.shape]
+    for paramNo in range(len(fromShape)):
+        if toShape[paramNo] < fromShape[paramNo]:
+            fromShape[paramNo] = toShape[paramNo]
+            fromTensor = tf.slice(fromTensor, [0 for a in fromShape], fromShape)
+        if toShape[paramNo] > fromShape[paramNo]:
+            deltas = [[0, 0] for a in fromShape]
+            toShapeLen = toShape[paramNo]
+            fromShapeLen = fromShape[paramNo]
+            if hasattr(toShapeLen, "value"):
+                toShapeLen = toShapeLen.value
+                fromShapeLen = fromShapeLen.value
+            deltas[paramNo] = [
+                math.floor((toShapeLen - fromShapeLen) / 2),
+                math.ceil((toShapeLen - fromShapeLen) / 2)
+            ]
+            fromTensor = tf.pad(fromTensor, tf.constant(deltas))
+            fromShape[paramNo] = toShape[paramNo]
+    return tf.assign(toTensor, fromTensor)
+
 # copies weights from one model to another
 def copyWeights (sess, fromModel, toModel, fromPrefix='', toPrefix=''):
     successCount = 0
     fromByName = {}
+    ops = []
     print("copying weights from older model...")
     for layer in fromModel.layers:
         fromByName[layer.name] = layer
@@ -203,15 +227,19 @@ def copyWeights (sess, fromModel, toModel, fromPrefix='', toPrefix=''):
         fromLayer = fromByName[fromLayerName]
         successCount += 1
         if hasattr(layer, 'bias'):
-           sess.run(tf.assign(layer.bias, fromLayer.bias))
+           ops.append(copySingleTensor(fromLayer.bias, layer.bias))
+           #ops.append(tf.assign(layer.bias, fromLayer.bias))
         if hasattr(layer, '_trainable_weights'):
             for i in range(len(layer._trainable_weights)):
                 w = layer._trainable_weights[i]
                 fromW = fromLayer._trainable_weights[i]
-                sess.run(tf.assign(w, fromW))
+                ops.append(copySingleTensor(fromW, w))
+                #ops.append(tf.assign(w, fromW))
         if hasattr(layer, 'weights'):
             for i in range(len(layer.weights)):
                 w = layer.weights[i]
                 fromW = fromLayer.weights[i]
-                sess.run(tf.assign(w, fromW))
+                ops.append(copySingleTensor(fromW, w))
+                #ops.append(tf.assign(w, fromW))
+    sess.run(ops)
     return successCount
