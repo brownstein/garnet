@@ -68,7 +68,7 @@ oldModel = keras.models.load_model("./saved_models/garnet_rev_34_full.h5", compi
 model = generateModel((image_shape[0], image_shape[1], 1),
                       output_filters=5,
                       initial_filters=8,
-                      depth=40
+                      depth=80
                       )
 
 with tf.Session().as_default() as sess:

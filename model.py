@@ -7,13 +7,13 @@ def LinkedConv2DMultiStack (
     # basic props
     depth=10,
     kernel_size=5,
-    transfer_dilation=2,
+    transfer_dilation=3,
 
     # filter depths
     initial_filters=8,
     logic_filters=30,
-    transfer_filters=4,
-    mergedown_filters=36,
+    transfer_filters=6,
+    mergedown_filters=40,
 
     # things that shouldn't change often
     activation='selu',
@@ -133,9 +133,9 @@ def generateModel (input_shape=(64, 64, 1),
 
 # helper to link all weights for a given model
 def linkAllWeights (model):
-    linkWeights(model, 2, "repeatedLogic_")
-    linkWeights(model, 2, "repeatedTransfer_")
-    linkWeights(model, 2, "repeatedMergeDown_")
+    linkWeights(model, 3, "repeatedLogic_")
+    linkWeights(model, 3, "repeatedTransfer_")
+    linkWeights(model, 3, "repeatedMergeDown_")
 
 # links weights between conv layers
 def linkWeights (model, offset=0, targetLayersWithPrefix='repeatedConv2D_'):
