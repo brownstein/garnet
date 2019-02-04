@@ -7,30 +7,30 @@ DATA_FILENAMES = {
     "fill": "case_{0}_filled.png"
 }
 LABEL_FILENAMES = {
-    "small": {
+    "normal": {
         "edges": {
-            "triangle": "case_{0}_small_triangles_edges.png",
-            "square": "case_{0}_small_squares_edges.png",
-            "circle": "case_{0}_small_circles_edges.png"
+            "triangle": "case_{0}_{1}_edges.png",
+            "square": "case_{0}_{1}_edges.png",
+            "circle": "case_{0}_{1}_edges.png"
         },
         "fill": {
-            "triangle": "case_{0}_small_triangles_filled.png",
-            "square": "case_{0}_small_squares_filled.png",
-            "circle": "case_{0}_small_circles_filled.png"
+            "triangle": "case_{0}_{1}_filled.png",
+            "square": "case_{0}_{1}_filled.png",
+            "circle": "case_{0}_{1}_filled.png"
         }
     },
-    "gestalt": {
+    "blurred": {
         "edges": {
-            "triangle": "case_{0}_gestalt_triangle_edges.png",
-            "square": "case_{0}_gestalt_square_edges.png",
-            "circle": "case_{0}_gestalt_circle_edges.png"
+            "triangle": "case_{0}_{1}_edges_blurred_.png",
+            "square": "case_{0}_{1}_edges_blurred_.png",
+            "circle": "case_{0}_{1}_edges_blurred_.png"
         },
         "fill": {
-            "triangle": "case_{0}_gestalt_triangle_filled.png",
-            "square": "case_{0}_gestalt_square_filled.png",
-            "circle": "case_{0}_gestalt_circle_filled.png"
+            "triangle": "case_{0}_{1}_filled_blurred_.png",
+            "square": "case_{0}_{1}_filled_blurred_.png",
+            "circle": "case_{0}_{1}_filled_blurred_.png"
         }
-    }
+    },
 }
 LABEL_FALLBACK = "fallback.png"
 
@@ -74,7 +74,7 @@ def load_dataset(dtype=tf.float16,
                 caseArray.append(path.join(dataPath, DATA_FILENAMES[channel].format(n)))
             # otherwise use shape path logic
             else:
-                smallShapePath = path.join(labelsPath, LABEL_FILENAMES["small"]["fill"][channel].format(n))
+                smallShapePath = path.join(labelsPath, LABEL_FILENAMES["blurred"]["fill"][channel].format(n, channel))
                 if (path.exists(smallShapePath)):
                     caseArray.append(smallShapePath)
                 else:
@@ -98,7 +98,7 @@ def load_dataset(dtype=tf.float16,
             imageTensor = tf.image.decode_png(imageString, 1)
             imageTensor = tf.cast(imageTensor, dtype)
             imageTensor = tf.image.resize_images(imageTensor, label_shape)
-            imageTensor = tf.multiply(imageTensor, 1 / 256)
+            imageTensor = tf.multiply(imageTensor, 1 / 255)
             labelLayers.append(imageTensor)
 
         dataStack = tf.concat(dataLayers, len(dataLayers[0].shape) - 1)

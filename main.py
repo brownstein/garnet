@@ -1,8 +1,9 @@
 import tensorflow as tf
 from tensorflow import keras
-from model import generateModel, linkWeights, unlinkWeights, copyWeights
-from data.gestalt_shapes_2 import load_dataset as load_gestalt
+from model import generateModel, linkAllWeights, unlinkAllWeights, copyWeights
+from data.gestalt_shapes_4 import load_dataset as load_gestalt
 # from data.variably_sized_shapes import load_dataset as load_vsized
+from data.combined_shapes_3 import load_dataset
 
 from run_output import dump_images
 from loss import loss
@@ -23,8 +24,10 @@ gestaltDataAndLabels = load_gestalt(
     label_shape=image_shape,
     label_channels=label_channels,
     include_gestalt_shapes=True,
-    repeat=True
+    repeat=False
 )
+# allDataAndLabels = gestaltDataAndLabels
+#
 # variablySizedDataAndLabels = load_vsized(
 #     dtype=tf.float16,
 #     data_shape=image_shape,
@@ -32,44 +35,59 @@ gestaltDataAndLabels = load_gestalt(
 #     label_channels=label_channels,
 #     repeat=False
 # )
+# # allDataAndLabels = variablySizedDataAndLabels
+#
 # allDataAndLabels = gestaltDataAndLabels.concatenate(variablySizedDataAndLabels)
-# allDataAndLabels = allDataAndLabels.shuffle(400).repeat()
+# allDataAndLabels = allDataAndLabels.shuffle(100).repeat()
 
-allDataAndLabels = gestaltDataAndLabels
+filledData = load_dataset(
+    dtype=tf.float16,
+    data_shape=image_shape,
+    label_shape=image_shape,
+    label_channels=label_channels,
+    data_channels=('fill',),
+    repeat=False
+)
+
+edgesData = load_dataset(
+    dtype=tf.float16,
+    data_shape=image_shape,
+    label_shape=image_shape,
+    label_channels=label_channels,
+    data_channels=('edges',),
+    repeat=False
+)
+
+allDataAndLabels = filledData.concatenate(edgesData)
+allDataAndLabels = allDataAndLabels.concatenate(gestaltDataAndLabels)
+allDataAndLabels = allDataAndLabels.shuffle(50).repeat()
+
+oldModel = keras.models.load_model("./saved_models/garnet_rev_34_full.h5", compile=False)
 
 # build new model
 model = generateModel((image_shape[0], image_shape[1], 1),
                       output_filters=5,
                       initial_filters=8,
-                      logic_filters=32,
-                      kernel_size=7,
-                      depth=64,
-                      num_variations=2,
-                      extra_conv2d_props = (
-                        {},
-                        { 'dilation_rate': 3 }
-                      )
+                      depth=40
                       )
 
 with tf.Session().as_default() as sess:
     sess.run(tf.global_variables_initializer())
 
-    # model = keras.models.load_model("", compile=False)
-    # model.load_weights("./saved_models/garnet_rev_29_weights.h5", by_name=True)
+    # load weights from previous run
+    # model.load_weights("./saved_models/garnet_rev_33_weights.h5", by_name=True)
+    copyWeights(sess, oldModel, model, 'repeatedLogic_', 'repeatedLogic_')
+    copyWeights(sess, oldModel, model, 'repeatedTransfer_', 'repeatedTransfer_')
+    # copyWeights(sess, oldModel, model, 'repeatedMergeDown_', 'repeatedMergeDown_')
 
     # link repeated layers
-    linkWeights(model, offset=3, targetLayersWithPrefix='repeated_')
-    linkWeights(model, offset=3, targetLayersWithPrefix='repeatedDilation_')
+    linkAllWeights(model)
 
     # summarize and compile model
     model.summary()
     model.compile(optimizer='adam',
                   loss=loss,
                   metrics=['accuracy'])
-
-    # copy weights from previous run
-    # numCopied = copyWeights(sess, oldModel, model, '', '')
-    # print("copied {0} weights from old model".format(numCopied))
 
     # set up monitoring
     tensorboard = keras.callbacks.TensorBoard(log_dir="./graph",
@@ -81,18 +99,17 @@ with tf.Session().as_default() as sess:
 
     # do the math
     model.fit(allDataAndLabels,
-              epochs=1000,
-              steps_per_epoch=30,
+              epochs=2000,
+              steps_per_epoch=50,
               callbacks=[tensorboard]
               )
 
     # unlink layers prior to saving
-    unlinkWeights(model, sess, targetLayersWithPrefix='repeated_')
-    unlinkWeights(model, sess, targetLayersWithPrefix='repeatedDilation_')
+    unlinkAllWeights(model, sess)
 
     # save the model
-    model.save_weights('./saved_models/garnet_rev_29_weights.h5', save_format='h5')
-    model.save("./saved_models/garnet_rev_29_full.h5")
+    model.save_weights('./saved_models/garnet_rev_35_weights.h5', save_format='h5')
+    model.save("./saved_models/garnet_rev_35_full.h5")
 
     # dump output before weights are unlinked
     dump_images(sess, model, allDataAndLabels, 100, 0.3,
