@@ -3,23 +3,19 @@ from tensorflow import keras
 from model import generateModel, linkWeights
 from loss import loss
 
-image_shape = (276, 361)
+image_shape = (383, 500)
 
 model = generateModel((image_shape[0], image_shape[1], 1),
                       output_filters=5,
                       initial_filters=8,
-                      logic_filters=32,
-                      kernel_size=7,
-                      rec_depth=40,
-                      prefix='',
-                      groups=2,
+                      depth=8
                       )
 
 with tf.Session().as_default() as sess:
     sess.run(tf.global_variables_initializer())
 
-    # model = keras.models.load_model("./saved_models/garnet_r25_full.h5", compile=False)
-    model.load_weights("./saved_models/garnet_r25_weights.h5", by_name=True)
+    # model = keras.models.load_model("./saved_models/garnet_rev_39_full.h5", compile=False)
+    model.load_weights("./saved_models/garnet_rev_39_weights.h5", by_name=True)
 
     # link repeated layers
     # linkWeights(model, offset=2)

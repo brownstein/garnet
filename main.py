@@ -49,39 +49,37 @@ filledData = load_dataset(
     repeat=False
 )
 
-edgesData = load_dataset(
-    dtype=tf.float16,
-    data_shape=image_shape,
-    label_shape=image_shape,
-    label_channels=label_channels,
-    data_channels=('edges',),
-    repeat=False
-)
+# edgesData = load_dataset(
+#     dtype=tf.float16,
+#     data_shape=image_shape,
+#     label_shape=image_shape,
+#     label_channels=label_channels,
+#     data_channels=('edges',),
+#     repeat=False
+# )
 
-allDataAndLabels = filledData.concatenate(edgesData)
+allDataAndLabels = filledData #.concatenate(edgesData)
 allDataAndLabels = allDataAndLabels.concatenate(gestaltDataAndLabels)
 allDataAndLabels = allDataAndLabels.shuffle(50).repeat()
 
-oldModel = keras.models.load_model("./saved_models/garnet_rev_34_full.h5", compile=False)
+# oldModel = keras.models.load_model("./saved_models/garnet_rev_37_full.h5", compile=False)
 
 # build new model
 model = generateModel((image_shape[0], image_shape[1], 1),
                       output_filters=5,
                       initial_filters=8,
-                      depth=80
+                      depth=8
                       )
 
 with tf.Session().as_default() as sess:
     sess.run(tf.global_variables_initializer())
 
     # load weights from previous run
-    # model.load_weights("./saved_models/garnet_rev_33_weights.h5", by_name=True)
-    copyWeights(sess, oldModel, model, 'repeatedLogic_', 'repeatedLogic_')
-    copyWeights(sess, oldModel, model, 'repeatedTransfer_', 'repeatedTransfer_')
-    # copyWeights(sess, oldModel, model, 'repeatedMergeDown_', 'repeatedMergeDown_')
+    model.load_weights("./saved_models/garnet_rev_39_weights.h5", by_name=True)
+    # copyWeights(sess, oldModel, model, 'repeatedLogic_', 'repeatedLogic_')
 
     # link repeated layers
-    linkAllWeights(model)
+    # linkAllWeights(model)
 
     # summarize and compile model
     model.summary()
@@ -99,17 +97,17 @@ with tf.Session().as_default() as sess:
 
     # do the math
     model.fit(allDataAndLabels,
-              epochs=2000,
+              epochs=10,
               steps_per_epoch=50,
               callbacks=[tensorboard]
               )
 
     # unlink layers prior to saving
-    unlinkAllWeights(model, sess)
+    # unlinkAllWeights(model, sess)
 
     # save the model
-    model.save_weights('./saved_models/garnet_rev_35_weights.h5', save_format='h5')
-    model.save("./saved_models/garnet_rev_35_full.h5")
+    model.save_weights('./saved_models/garnet_rev_40_weights.h5', save_format='h5')
+    model.save("./saved_models/garnet_rev_40_full.h5")
 
     # dump output before weights are unlinked
     dump_images(sess, model, allDataAndLabels, 100, 0.3,

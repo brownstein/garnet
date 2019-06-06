@@ -26,9 +26,9 @@ LABEL_FILENAMES = {
             "circle": "case_{0}_gestalt_circle_edges.png"
         },
         "fill": {
-            "triangle": "case_{0}_gestalt_triangle_filled_blurred_.png",
-            "square": "case_{0}_gestalt_square_filled_blurred_.png",
-            "circle": "case_{0}_gestalt_circle_filled_blurred_.png"
+            "triangle": "case_{0}_gestalt_triangle_filled.png",
+            "square": "case_{0}_gestalt_square_filled.png",
+            "circle": "case_{0}_gestalt_circle_filled.png"
         }
     }
 }
@@ -49,7 +49,8 @@ def load_dataset(dtype=tf.float16,
                  ),
                  num_cases=NUM_TEST_CASES,
                  include_gestalt_shapes=False,
-                 repeat=True
+                 repeat=True,
+                 arrays=False
                  ):
 
     cd = path.dirname(__file__)

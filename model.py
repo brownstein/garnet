@@ -6,14 +6,11 @@ import math
 def LinkedConv2DMultiStack (
     # basic props
     depth=10,
-    kernel_size=5,
-    transfer_dilation=3,
+    kernel_size=7,
 
     # filter depths
     initial_filters=8,
-    logic_filters=30,
-    transfer_filters=6,
-    mergedown_filters=40,
+    logic_filters=64,
 
     # things that shouldn't change often
     activation='selu',
@@ -23,8 +20,6 @@ def LinkedConv2DMultiStack (
     # layer prefixes
     initial_logits_prefix='initialLogits_',
     logic_prefix='repeatedLogic_',
-    transfer_prefix='repeatedTransfer_',
-    mergedown_prefix='repeatedMergeDown_',
     ):
     def apply (input_layer):
 
@@ -57,31 +52,11 @@ def LinkedConv2DMultiStack (
                 name="{0}conv2D_{1}".format(logic_prefix, d)
             )(chain)
 
-            transferFork = keras.layers.SeparableConv2D(
-                filters=transfer_filters,
-                kernel_size=kernel_size,
-                padding=padding,
-                data_format=data_format,
-                activation=activation,
-                name="{0}conv2D_{1}".format(transfer_prefix, d),
-                dilation_rate=transfer_dilation
-            )(chain)
-
             # merge them
             chain = keras.layers.Concatenate(concatAxis)([
                 initialLogits,
-                logicFork,
-                transferFork
+                logicFork
             ])
-
-            # decrease the number of channels
-            chain = keras.layers.SeparableConv2D(
-                filters=mergedown_filters,
-                kernel_size=1,
-                data_format=data_format,
-                activation=activation,
-                name="{0}Conv2D_{1}".format(mergedown_prefix, d)
-            )(chain)
 
         return chain
     return apply
@@ -133,9 +108,9 @@ def generateModel (input_shape=(64, 64, 1),
 
 # helper to link all weights for a given model
 def linkAllWeights (model):
-    linkWeights(model, 3, "repeatedLogic_")
-    linkWeights(model, 3, "repeatedTransfer_")
-    linkWeights(model, 3, "repeatedMergeDown_")
+    linkWeights(model, 2, "repeatedLogic_")
+    linkWeights(model, 2, "repeatedTransfer_")
+    linkWeights(model, 2, "repeatedMergeDown_")
 
 # links weights between conv layers
 def linkWeights (model, offset=0, targetLayersWithPrefix='repeatedConv2D_'):
